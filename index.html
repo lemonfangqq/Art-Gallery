@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 小画家画廊</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FAF6F2;
+  --surface:#FFFFFF;
+  --text:#2C2C2C;
+  --text-secondary:#8B8B8B;
+  --border:#EBE5DE;
+  --shadow:0 2px 12px rgba(0,0,0,0.06);
+  --radius:16px;
+  --radius-sm:10px;
+  --primary:#D4A373;
+  --primary-light:#EAD5B8;
+  --accent:#6B9080;
+  --accent-light:#A4C3B2;
+  --warm:#E09F6E;
+  --coral:#E07A5F;
+  --header-h:64px;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif
+}
+body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+img{display:block;max-width:100%}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+input,textarea{font:inherit;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;background:var(--surface);color:var(--text);width:100%;outline:none;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--primary)}
+textarea{resize:vertical;min-height:80px}
+select{-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 fill=%22%238B8B8B%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M8 11L3 6h10z%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.header{position:sticky;top:0;z-index:100;background:rgba(250,246,242,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.header-logo{font-size:20px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.header-logo span{background:linear-gradient(135deg,var(--coral),var(--warm));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-actions{display:flex;align-items:center;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--warm)}
+.btn-outline{border:1.5px solid var(--border);color:var(--text);background:var(--surface)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-ghost{color:var(--text-secondary)}
+.btn-ghost:hover{color:var(--text);background:rgba(0,0,0,.04)}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-danger{color:var(--coral);border:1.5px solid rgba(224,122,95,.3)}
+.btn-danger:hover{background:rgba(224,122,95,.08);border-color:var(--coral)}
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:16px 24px 0;font-size:13px;color:var(--text-secondary);flex-wrap:wrap}
+.breadcrumb a{transition:color .2s;cursor:pointer;color:var(--text-secondary)}
+.breadcrumb a:hover{color:var(--primary)}
+.breadcrumb .sep{opacity:.4}
+.breadcrumb .current{color:var(--text);font-weight:500}
+.feature-bar{display:flex;gap:6px;padding:12px 24px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface);margin:0 0 24px}
+.feature-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--bg);color:var(--text-secondary);cursor:default}
+.feature-tag.active{background:var(--primary-light);color:var(--primary)}
+.feature-tag .badge{background:var(--primary);color:#fff;border-radius:10px;padding:0 6px;font-size:10px;line-height:16px}
+.container{max-width:1280px;margin:0 auto;padding:0 24px 40px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.section-header h2{font-size:22px;font-weight:600;letter-spacing:-.3px}
+.section-header .sub{color:var(--text-secondary);font-size:14px;font-weight:400}
+.artist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:40px}
+.artist-card{background:var(--surface);border-radius:var(--radius);padding:24px 16px;text-align:center;box-shadow:var(--shadow);cursor:pointer;transition:all .3s;border:2px solid transparent}
+.artist-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.08);border-color:var(--primary-light)}
+.artist-avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:#fff}
+.artist-name{font-size:16px;font-weight:600;margin-bottom:4px}
+.artist-count{font-size:13px;color:var(--text-secondary)}
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-bottom:40px}
+.album-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:all .3s;border:2px solid transparent}
+.album-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.08);border-color:var(--primary-light)}
+.album-cover{aspect-ratio:4/3;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--text-secondary);overflow:hidden}
+.album-cover img{width:100%;height:100%;object-fit:cover}
+.album-info{padding:14px 16px}
+.album-info h3{font-size:15px;font-weight:600;margin-bottom:3px}
+.album-info p{font-size:13px;color:var(--text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.artwork-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+.artwork-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:all .3s;border:2px solid transparent}
+.artwork-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.08);border-color:var(--primary-light)}
+.artwork-img{aspect-ratio:1;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.artwork-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.artwork-card:hover .artwork-img img{transform:scale(1.05)}
+.artwork-info{padding:14px 16px}
+.artwork-info h3{font-size:14px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artwork-info .meta{font-size:12px;color:var(--text-secondary)}
+.artwork-info .desc{font-size:13px;color:var(--text-secondary);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text-secondary)}
+.empty-state .icon{font-size:56px;margin-bottom:16px;opacity:.5}
+.empty-state h3{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty-state p{font-size:14px;max-width:360px;margin:0 auto 20px}
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s}
+.modal{background:var(--surface);border-radius:var(--radius);max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:slideUp .25s}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:18px;font-weight:600}
+.modal-body{padding:24px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)}
+.upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)}
+.upload-area:hover,.upload-area.dragover{border-color:var(--primary);background:var(--primary-light)}
+.upload-area .icon{font-size:40px;margin-bottom:8px}
+.upload-preview{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.upload-preview img{width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)}
+.lightbox-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:40px;animation:fadeIn .3s}
+.lightbox{display:flex;gap:24px;align-items:flex-start;max-width:90vw}
+.lightbox-img{max-width:70vw;max-height:80vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.lightbox-info{background:var(--surface);border-radius:12px;padding:20px;min-width:220px;max-width:300px;flex-shrink:0}
+.lightbox-info h2{font-size:16px;font-weight:600;margin-bottom:4px}
+.lightbox-close{position:fixed;top:20px;right:24px;z-index:301;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;border:none}
+.lightbox-close:hover{background:rgba(255,255,255,.25)}
+.lightbox-nav{position:fixed;top:50%;transform:translateY(-50%);z-index:301;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;border:none}
+.lightbox-nav:hover{background:rgba(255,255,255,.22)}
+.lightbox-prev{left:20px}.lightbox-next{right:20px}
+.avatar-colors{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.avatar-color{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .2s}
+.avatar-color:hover,.avatar-color.selected{border-color:var(--text);transform:scale(1.1)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@media(max-width:768px){
+  .lightbox{flex-direction:column;align-items:center}
+  .lightbox-img{max-width:95vw;max-height:60vh}
+  .lightbox-info{max-width:95vw;width:100%}
+  .artist-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .album-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .artwork-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .header{padding:0 16px}
+  .container{padding:0 16px 32px}
+  .breadcrumb{padding:12px 16px 0}
+  .feature-bar{padding:10px 16px;gap:4px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo" id="logoHome">🎨 <span>小画家画廊</span></div>
+  </div>
+  <div class="header-actions" id="headerActions"></div>
+</header>
+<div class="breadcrumb" id="breadcrumb"></div>
+<div class="feature-bar" id="featureBar"></div>
+<div class="container" id="mainContent"></div>
+<div id="modalContainer"></div>
+</div>
+<script>
+var COLORS = ['#D4A373','#E07A5F','#81B29A','#6B9080','#E09F6E','#A4C3B2','#F2CC8F','#C77DFF','#72EFDD','#FF99C8','#AACCFF','#FFD6A5'];
+function ld(){try{return JSON.parse(localStorage.getItem('kg'))||{a:[],b:[],w:[]}}catch(e){return{a:[],b:[],w:[]}}}
+function sd(d){localStorage.setItem('kg',JSON.stringify(d))}
+var D=ld();function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+var S={v:'home',aid:null,bid:null,wid:null,li:-1,mo:null,ei:null};
+var UI=[];
+
+function es(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function sk(el){el.style.animation='shake .3s';setTimeout(function(){el.style.animation='';},300);}
+
+function nav(v,id){
+  S.v=v;
+  if(v==='home'){S.aid=null;S.bid=null;S.wid=null;}
+  else if(v==='artist'){S.aid=id;S.bid=null;S.wid=null;}
+  else if(v==='album'){S.bid=id;var al=D.b.find(function(x){return x.id===id});S.aid=al?al.aid:null;S.wid=null;}
+  else if(v==='artwork'){S.wid=id;S.li=-1;}
+  R();
+}
+
+function esc(s){return es(s)}
+function atr(s,d){
+  var el=document.getElementById(s);
+  if(!el)return;
+  el.innerHTML=d;
+}
+
+function R(){
+  // breadcrumb
+  var el=document.getElementById('breadcrumb');
+  if(!el)return;
+  var c=[{l:'🏠 首页',a:'home'}];
+  if(S.aid){var at=D.a.find(function(x){return x.id===S.aid});if(at)c.push({l:at.n,a:'artist',id:at.id});}
+  if(S.bid){var al=D.b.find(function(x){return x.id===S.bid});if(al)c.push({l:al.n,a:'album',id:al.id});}
+  el.innerHTML=c.map(function(x,i){
+    var sep=i>0?' <span class="sep">▸</span> ':'';
+    if(i===c.length-1)return sep+'<span class="current">'+esc(x.l)+'</span>';
+    return sep+'<a onclick="nav(\''+x.a+'\',\''+(x.id||'')+'\')">'+esc(x.l)+'</a>';
+  }).join('');
+
+  // feature bar
+  var fb=document.getElementById('featureBar');
+  if(fb){
+    var tags=[];
+    if(S.v==='home'){
+      tags.push('👤 小画家管理','🖼️ 画集管理','📸 作品上传','✨ 作品展示');
+    }else if(S.v==='artist'){
+      tags.push('👤 小画家信息','🖼️ 画集管理','📸 上传作品','✨ 浏览作品');
+    }else if(S.v==='album'){
+      tags.push('🖼️ 画集信息','📸 上传作品','✨ 作品展示');
+    }else if(S.v==='artwork'){
+      tags.push('✨ 作品详情','✏️ 编辑作品','🗑️ 删除作品');
+    }
+    fb.innerHTML=tags.map(function(t){return '<span class="feature-tag active"><span class="icon">'+t.slice(0,2)+'</span>'+t.slice(2)+'</span>';}).join('');
+  }
+
+  // header actions
+  var ha=document.getElementById('headerActions');
+  if(ha){
+    var b=[];
+    if(S.v==='home')b.push({l:'+ 新建小画家',c:'btn btn-primary',a:'addArtist'});
+    else if(S.v==='artist'){b.push({l:'+ 新建画集',c:'btn btn-primary btn-sm',a:'addAlbum'});b.push({l:'📸 上传',c:'btn btn-outline btn-sm',a:'uploadArtwork'});b.push({l:'← 返回',c:'btn btn-ghost btn-sm',a:'home'});}
+    else if(S.v==='album'){b.push({l:'📸 上传',c:'btn btn-primary btn-sm',a:'uploadArtwork'});b.push({l:'← 返回',c:'btn btn-ghost btn-sm',a:'artist',id:S.aid});}
+    else if(S.v==='artwork')b.push({l:'← 返回',c:'btn btn-ghost btn-sm',a:'album',id:S.bid});
+    ha.innerHTML=b.map(function(x){return '<button class="'+x.c+'" data-a="'+x.a+'" data-id="'+(x.id||'')+'">'+x.l+'</button>';}).join('');
+    ha.querySelectorAll('button[data-a]').forEach(function(bn){
+      bn.addEventListener('click',function(e){
+        var a=e.currentTarget.dataset.a;
+        var id=e.currentTarget.dataset.id;
+        if(a==='addArtist')M('addArtist');
+        else if(a==='addAlbum')M('addAlbum');
+        else if(a==='uploadArtwork')M('uploadArtwork');
+        else if(a==='home'||a==='artist'||a==='album')nav(a,id||undefined);
+      });
+    });
+  }
+
+  // main content
+  var mc=document.getElementById('mainContent');
+  if(!mc)return;
+  if(S.v==='home')mc.innerHTML=home();
+  else if(S.v==='artist')mc.innerHTML=artist();
+  else if(S.v==='album')mc.innerHTML=album();
+  else if(S.v==='artwork')mc.innerHTML=detail();
+  AE();
+  MO();
+}
+
+document.getElementById('logoHome').addEventListener('click',function(){nav('home');});
+
+function home(){
+  var as=D.a;
+  if(as.length===0)return '<div class="empty-state"><div class="icon">👤</div><h3>还没有小画家</h3><p>点击上方"新建小画家"开始创建吧 🎨</p></div>';
+  var h='<div class="section-header"><div><h2>所有小画家</h2><span class="sub">共 '+as.length+' 位小画家 · '+D.b.length+' 个画集 · '+D.w.length+' 幅作品</span></div></div><div class="artist-grid">';
+  as.forEach(function(a){
+    var ac=D.b.filter(function(b){return b.aid===a.id}).length;
+    var wc=D.w.filter(function(w){return w.aid===a.id}).length;
+    h+='<div class="artist-card" onclick="nav(\'artist\',\''+a.id+'\')"><div class="artist-avatar" style="background:'+a.c+'">'+esc(a.n[0])+'</div><div class="artist-name">'+esc(a.n)+'</div><div class="artist-count">'+ac+' 个画集 · '+wc+' 幅作品</div></div>';
+  });
+  h+='</div>';return h;
+}
+
+function artist(){
+  var at=D.a.find(function(x){return x.id===S.aid});
+  if(!at)return '<div class="empty-state"><h3>小画家不存在</h3><button class="btn btn-primary" onclick="nav(\'home\')">返回首页</button></div>';
+  var al=D.b.filter(function(x){return x.aid===at.id});
+  var bio=at.b||'这位小画家还没有简介';
+  var h='<div class="section-header" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:16px"><div class="artist-avatar" style="background:'+at.c+';width:56px;height:56px;font-size:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">'+esc(at.n[0])+'</div><div><h2 style="font-size:22px;font-weight:600">'+esc(at.n)+'</h2><span class="sub">'+esc(bio)+'</span></div></div></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" onclick="M(\'editArtist\',\''+at.id+'\')">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="M(\'addAlbum\')">+ 新建画集</button><button class="btn btn-outline btn-sm" onclick="M(\'uploadArtwork\')">📸 上传作品</button></div>';
+  if(al.length===0){
+    h+='<div class="empty-state"><div class="icon">📚</div><h3>还没有画集</h3><p>为小画家创建第一个画集吧</p></div>';
+  }else{
+    h+='<div class="section-header"><h2>画集 <span class="sub">('+al.length+')</span></h2></div><div class="album-grid">';
+    al.forEach(function(al2){
+      var ws=D.w.filter(function(w){return w.bid===al2.id});
+      var cv=ws.length>0?ws[0].i:null;
+      var desc=al2.desc||'';
+      h+='<div class="album-card" onclick="nav(\'album\',\''+al2.id+'\')"><div class="album-cover">'+(cv?'<img src="'+cv+'" alt="'+esc(al2.n)+'">':'🎨')+'</div><div class="album-info"><h3>'+esc(al2.n)+'</h3><p>'+esc(desc)+' · '+ws.length+' 幅作品</p></div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+function album(){
+  var al=D.b.find(function(x){return x.id===S.bid});
+  if(!al)return '<div class="empty-state"><h3>画集不存在</h3><button class="btn btn-primary" onclick="nav(\'home\')">返回首页</button></div>';
+  var at=D.a.find(function(x){return x.id===al.aid});
+  var ws=D.w.filter(function(w){return w.bid===al.id});
+  var h='<div class="section-header"><div><h2>'+esc(al.n)+' <span class="sub">'+ws.length+' 幅作品</span></h2><div style="font-size:13px;color:var(--text-secondary);margin-top:4px">'+(at?'<a onclick="nav(\'artist\',\''+at.id+'\')" style="color:var(--primary);cursor:pointer">'+esc(at.n)+'</a>':'')+(al.desc?' · '+esc(al.desc):'')+'</div></div><div style="display:flex;gap:8px"><button class="btn btn-outline btn-sm" onclick="M(\'editAlbum\',\''+al.id+'\')">✏️ 编辑</button><button class="btn btn-outline btn-sm" onclick="M(\'uploadArtwork\')">📸 上传</button></div></div>';
+  if(ws.length===0){
+    h+='<div class="empty-state"><div class="icon">🖼️</div><h3>这个画集还没有作品</h3><p>上传第一幅画作吧</p></div>';
+  }else{
+    h+='<div class="artwork-grid">';
+    ws.forEach(function(w){
+      h+='<div class="artwork-card" onclick="nav(\'artwork\',\''+w.id+'\')"><div class="artwork-img"><img src="'+w.i+'" alt="'+esc(w.t)+'" loading="lazy"></div><div class="artwork-info"><h3>'+esc(w.t)+'</h3><div class="meta">'+(w.d||'')+'</div>'+(w.desc?'<div class="desc">'+esc(w.desc)+'</div>':'')+'</div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+function detail(){
+  var w=D.w.find(function(x){return x.id===S.wid});
+  if(!w)return '<div class="empty-state"><h3>作品不存在</h3></div>';
+  var al=D.b.find(function(x){return x.id===w.bid});
+  var at=D.a.find(function(x){return x.id===w.aid});
+  var ws=D.w.filter(function(x){return x.bid===w.bid});
+  var idx=ws.findIndex(function(x){return x.id===w.id});
+  var p=idx>0?ws[idx-1]:null;
+  var n=idx<ws.length-1?ws[idx+1]:null;
+  var h='<div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">';
+  h+='<div><div style="background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:zoom-in" onclick="OL(\''+w.id+'\')"><img src="'+w.i+'" alt="'+esc(w.t)+'" style="width:100%;height:auto;display:block"></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:center">';
+  if(p)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+p.id+'\')">◀ 上一幅</button>';
+  if(n)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+n.id+'\')">下一幅 ▶</button>';
+  h+='</div></div>';
+  h+='<div style="background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);position:sticky;top:calc(64px + 20px)"><h2 style="font-size:20px;font-weight:600;margin-bottom:4px">'+esc(w.t)+'</h2>';
+  h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">'+(at?esc(at.n):'')+' · '+(w.d||'')+(al?' <span style="opacity:.5">·</span> <a onclick="nav(\'album\',\''+al.id+'\')" style="color:var(--primary);cursor:pointer">'+esc(al.n)+'</a>':'')+'</div>';
+  if(w.desc)h+='<p style="font-size:14px;line-height:1.7;margin-bottom:20px">'+esc(w.desc)+'</p>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-outline btn-sm" onclick="M(\'editArtwork\',\''+w.id+'\')">✏️ 编辑信息</button><button class="btn btn-danger btn-sm" onclick="CF(\''+w.id+'\')">🗑️ 删除作品</button></div></div></div>';
+  return h;
+}
+
+function CF(id){
+  if(!confirm('确定要删除这幅作品吗？'))return;
+  D.w=D.w.filter(function(w){return w.id!==id});
+  sd(D);
+  if(S.wid===id){
+    var ws=D.w.filter(function(w){return w.bid===S.bid});
+    if(ws.length>0)nav('artwork',ws[0].id);else nav('album',S.bid);
+  }else R();
+}
+
+function AE(){
+  // no extra binding needed - most use inline onclick
+}
+
+function OL(id){
+  var ws=D.w.filter(function(w){return w.bid===S.bid});
+  var idx=ws.findIndex(function(w){return w.id===id});
+  if(idx<0)return;
+  S.li=idx;
+  LB();
+}
+
+function LB(){
+  var ws=D.w.filter(function(w){return w.bid===S.bid});
+  var w=ws[S.li];
+  if(!w){document.getElementById('modalContainer').innerHTML='';return;}
+  var h='<div class="lightbox-overlay" id="LBO"><button class="lightbox-close" onclick="LBX()">✕</button>';
+  if(S.li>0)h+='<button class="lightbox-nav lightbox-prev" onclick="LBP()">◀</button>';
+  if(S.li<ws.length-1)h+='<button class="lightbox-nav lightbox-next" onclick="LBN()">▶</button>';
+  h+='<div class="lightbox"><img src="'+w.i+'" class="lightbox-img" alt="'+esc(w.t)+'"><div class="lightbox-info"><h2>'+esc(w.t)+'</h2><div class="meta">'+(w.d||'')+'</div>'+(w.desc?'<p style="font-size:14px;line-height:1.6;margin-top:8px">'+esc(w.desc)+'</p>':'')+'<div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">'+(S.li+1)+' / '+ws.length+'</div></div></div></div>';
+  document.getElementById('modalContainer').innerHTML=h;
+  document.getElementById('LBO').addEventListener('click',function(e){if(e.target===e.currentTarget){S.li=-1;document.getElementById('modalContainer').innerHTML='';}});
+  document.addEventListener('keydown',LKK);
+}
+
+function LBX(){S.li=-1;document.getElementById('modalContainer').innerHTML='';document.removeEventListener('keydown',LKK);}
+function LBP(){S.li--;LB();}
+function LBN(){S.li++;LB();}
+
+function LKK(e){
+  if(S.li<0){document.removeEventListener('keydown',LKK);return;}
+  if(e.key==='Escape')LBX();
+  var ws=D.w.filter(function(w){return w.bid===S.bid});
+  if(e.key==='ArrowLeft'&&S.li>0){S.li--;LB();}
+  if(e.key==='ArrowRight'&&S.li<ws.length-1){S.li++;LB();}
+}
+
+function M(type,id){S.mo=type;S.ei=id||null;MO();}
+
+function MO(){
+  var el=document.getElementById('modalContainer');
+  if(!S.mo){if(!S.li||S.li<0)el.innerHTML='';return;}
+  var h='';
+  if(S.mo==='addArtist')h=AM1();
+  else if(S.mo==='editArtist')h=AM2();
+  else if(S.mo==='addAlbum')h=AM3();
+  else if(S.mo==='editAlbum')h=AM4();
+  else if(S.mo==='uploadArtwork')h=AM5();
+  else if(S.mo==='editArtwork')h=AM6();
+  else{el.innerHTML='';return;}
+  el.innerHTML='<div class="modal-overlay" id="modalOv">'+h+'</div>';
+  document.getElementById('modalOv').addEventListener('click',function(e){if(e.target===e.currentTarget)C();});
+  document.addEventListener('keydown',MK);
+  AME();
+}
+
+function C(){S.mo=null;S.ei=null;document.getElementById('modalContainer').innerHTML='';document.removeEventListener('keydown',MK);}
+function MK(e){if(e.key==='Escape')C();}
+
+function AM1(){
+  var cs=COLORS.map(function(c,i){return '<div class="avatar-color'+(i===0?' selected':'')+'" style="background:'+c+'" data-c="'+c+'"></div>';}).join('');
+  return '<div class="modal"><div class="modal-header"><h2>新建小画家</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>名字 *</label><input type="text" id="fName" placeholder="输入小画家名字" maxlength="20"></div><div class="form-group"><label>简介</label><textarea id="fBio" placeholder="简单介绍一下这位小画家" maxlength="100"></textarea></div><div class="form-group"><label>头像颜色</label><div class="avatar-colors" id="fColors">'+cs+'</div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sAA">确认创建</button></div></div>';
+}
+
+function AM2(){
+  var a=D.a.find(function(x){return x.id===S.ei});
+  if(!a)return '';
+  var cs=COLORS.map(function(c){return '<div class="avatar-color'+(a.c===c?' selected':'')+'" style="background:'+c+'" data-c="'+c+'"></div>';}).join('');
+  return '<div class="modal"><div class="modal-header"><h2>编辑小画家</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>名字 *</label><input type="text" id="fName" value="'+esc(a.n)+'" maxlength="20"></div><div class="form-group"><label>简介</label><textarea id="fBio" maxlength="100">'+esc(a.b||'')+'</textarea></div><div class="form-group"><label>头像颜色</label><div class="avatar-colors" id="fColors">'+cs+'</div></div><div style="margin-top:12px;padding-top:16px;border-top:1px solid var(--border)"><button class="btn btn-danger btn-sm" id="dABtn" data-id="'+a.id+'">🗑️ 删除这位小画家</button></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sEA">保存修改</button></div></div>';
+}
+
+function AM3(){
+  return '<div class="modal"><div class="modal-header"><h2>新建画集</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>画集名称 *</label><input type="text" id="fAName" placeholder="比如：彩色世界、我的动物朋友" maxlength="30"></div><div class="form-group"><label>简介</label><textarea id="fADesc" placeholder="这个画集的主题是什么？" maxlength="200"></textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sAB">确认创建</button></div></div>';
+}
+
+function AM4(){
+  var al=D.b.find(function(x){return x.id===S.ei});
+  if(!al)return '';
+  return '<div class="modal"><div class="modal-header"><h2>编辑画集</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>画集名称 *</label><input type="text" id="fAName" value="'+esc(al.n)+'" maxlength="30"></div><div class="form-group"><label>简介</label><textarea id="fADesc" maxlength="200">'+esc(al.desc||'')+'</textarea></div><div style="margin-top:12px;padding-top:16px;border-top:1px solid var(--border)"><button class="btn btn-danger btn-sm" id="dBtn" data-id="'+al.id+'">🗑️ 删除画集</button></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sEAB">保存修改</button></div></div>';
+}
+
+function AM5(){
+  UI=[];
+  var al=D.b.filter(function(b){return !S.aid||b.aid===S.aid});
+  var pa=S.aid||'',pb=S.bid||'';
+  var h='<div class="modal" style="max-width:580px"><div class="modal-header"><h2>上传新作品</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>选择小画家 *</label><select id="fWA" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
+  D.a.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===pa?' selected':'')+'>'+esc(a.n)+'</option>';});
+  h+='</select></div><div class="form-group"><label>选择画集 *</label><select id="fWB" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
+  al.forEach(function(b){h+='<option value="'+b.id+'"'+(b.id===pb?' selected':'')+'>'+esc(b.n)+'</option>';});
+  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub">支持 JPG、PNG 格式</div></div><input type="file" id="fFI" accept="image/*" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
+  return h;
+}
+
+function AM6(){
+  var w=D.w.find(function(x){return x.id===S.ei});
+  if(!w)return '';
+  return '<div class="modal"><div class="modal-header"><h2>编辑作品信息</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>标题 *</label><input type="text" id="fWT" value="'+esc(w.t)+'" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" maxlength="300">'+esc(w.desc||'')+'</textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sEW">保存修改</button></div></div>';
+}
+
+function AME(){
+  // Color picker
+  var cc=document.getElementById('fColors');
+  if(cc){
+    cc.querySelectorAll('.avatar-color').forEach(function(el){
+      el.addEventListener('click',function(){
+        cc.querySelectorAll('.avatar-color').forEach(function(c){c.classList.remove('selected');});
+        el.classList.add('selected');
+      });
+    });
+  }
+  // Upload
+  var ua=document.getElementById('fUA');
+  var fi=document.getElementById('fFI');
+  var up=document.getElementById('fUP');
+  if(ua&&fi){
+    ua.addEventListener('click',function(){fi.click();});
+    ua.addEventListener('dragover',function(e){e.preventDefault();ua.classList.add('dragover');});
+    ua.addEventListener('dragleave',function(){ua.classList.remove('dragover');});
+    ua.addEventListener('drop',function(e){e.preventDefault();ua.classList.remove('dragover');HF(e.dataTransfer.files);});
+    fi.addEventListener('change',function(){if(fi.files.length)HF(fi.files);});
+  }
+  // Submit add artist
+  var sAA=document.getElementById('sAA');
+  if(sAA){
+    sAA.addEventListener('click',function(){
+      var n=document.getElementById('fName').value.trim();
+      if(!n){sk(sAA);return;}
+      var b=document.getElementById('fBio').value.trim();
+      var sl=document.querySelector('#fColors .selected');
+      var c=sl?sl.dataset.c:COLORS[0];
+      D.a.push({id:id(),n:n,b:b,c:c,at:new Date().toISOString()});
+      sd(D);C();R();
+    });
+  }
+  // Submit edit artist
+  var sEA=document.getElementById('sEA');
+  if(sEA){
+    sEA.addEventListener('click',function(){
+      var a=D.a.find(function(x){return x.id===S.ei});
+      if(!a)return;
+      var n=document.getElementById('fName').value.trim();
+      if(!n){sk(sEA);return;}
+      a.n=n;
+      a.b=document.getElementById('fBio').value.trim();
+      var sl=document.querySelector('#fColors .selected');
+      if(sl)a.c=sl.dataset.c;
+      sd(D);C();R();
+    });
+  }
+  // Delete artist
+  var dA=document.getElementById('dABtn');
+  if(dA){
+    dA.addEventListener('click',function(){
+      if(!confirm('确定要删除这位小画家及其所有画集和作品吗？'))return;
+      var id=dA.dataset.id;
+      D.w=D.w.filter(function(w){return w.aid!==id});
+      D.b=D.b.filter(function(b){return b.aid!==id});
+      D.a=D.a.filter(function(a){return a.id!==id});
+      sd(D);C();if(S.aid===id)nav('home');else R();
+    });
+  }
+  // Submit add album
+  var sAB=document.getElementById('sAB');
+  if(sAB){
+    sAB.addEventListener('click',function(){
+      var n=document.getElementById('fAName').value.trim();
+      if(!n){sk(sAB);return;}
+      var d=document.getElementById('fADesc').value.trim();
+      D.b.push({id:id(),aid:S.aid,n:n,desc:d,at:new Date().toISOString()});
+      sd(D);C();R();
+    });
+  }
+  // Submit edit album
+  var sEAB=document.getElementById('sEAB');
+  if(sEAB){
+    sEAB.addEventListener('click',function(){
+      var al=D.b.find(function(x){return x.id===S.ei});
+      if(!al)return;
+      var n=document.getElementById('fAName').value.trim();
+      if(!n){sk(sEAB);return;}
+      al.n=n;
+      al.desc=document.getElementById('fADesc').value.trim();
+      sd(D);C();R();
+    });
+  }
+  // Delete album
+  var dB=document.getElementById('dBtn');
+  if(dB){
+    dB.addEventListener('click',function(){
+      if(!confirm('确定要删除这个画集及其所有作品吗？'))return;
+      var id=dB.dataset.id;
+      D.w=D.w.filter(function(w){return w.bid!==id});
+      D.b=D.b.filter(function(b){return b.id!==id});
+      sd(D);C();if(S.bid===id)nav('artist',S.aid);else R();
+    });
+  }
+  // Submit upload
+  var sUW=document.getElementById('sUW');
+  if(sUW){
+    sUW.addEventListener('click',function(){
+      var aid=document.getElementById('fWA').value;
+      var bid=document.getElementById('fWB').value;
+      var t=document.getElementById('fWT').value.trim();
+      if(!aid||!bid||!t||UI.length===0){sk(sUW);return;}
+      var d=document.getElementById('fWD').value.trim();
+      var today=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+      UI.forEach(function(img){
+        D.w.push({id:id(),bid:bid,aid:aid,t:t,d:d,i:img,date:today,at:new Date().toISOString()});
+      });
+      sd(D);C();R();UI=[];
+    });
+  }
+  // Submit edit artwork
+  var sEW=document.getElementById('sEW');
+  if(sEW){
+    sEW.addEventListener('click',function(){
+      var w=D.w.find(function(x){return x.id===S.ei});
+      if(!w)return;
+      var t=document.getElementById('fWT').value.trim();
+      if(!t){sk(sEW);return;}
+      w.t=t;
+      w.desc=document.getElementById('fWD').value.trim();
+      sd(D);C();R();
+    });
+  }
+}
+
+function HF(files){
+  Array.from(files).forEach(function(file){
+    if(!file.type.startsWith('image/'))return;
+    var r=new FileReader();
+    r.onload=function(e){UI.push(e.target.result);RUP();};
+    r.readAsDataURL(file);
+  });
+}
+
+function RUP(){
+  var up=document.getElementById('fUP');
+  if(!up)return;
+  up.innerHTML=UI.map(function(img,i){
+    return '<div style="position:relative;display:inline-block"><img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="var x=parseInt(this.dataset.idx);UI.splice(x,1);RUP();" data-idx="'+i+'" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
+  }).join('');
+}
+
+// Artist-album sync
+document.addEventListener('change',function(e){
+  if(e.target.id==='fWA'){
+    var aid=e.target.value;
+    var as=document.getElementById('fWB');
+    if(!as)return;
+    var f=D.b.filter(function(b){return b.aid===aid});
+    as.innerHTML='<option value="">-- 请选择 --</option>'+f.map(function(b){return '<option value="'+b.id+'">'+esc(b.n)+'</option>';}).join('');
+  }
+});
+
+R();
+</script>
+</body>
+</html>
