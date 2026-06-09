@@ -144,7 +144,15 @@ select{-webkit-appearance:none;appearance:none;background-image:url('data:image/
 </div>
 <script>
 var COLORS = ['#D4A373','#E07A5F','#81B29A','#6B9080','#E09F6E','#A4C3B2','#F2CC8F','#C77DFF','#72EFDD','#FF99C8','#AACCFF','#FFD6A5'];
-function ld(){try{return JSON.parse(localStorage.getItem('kg'))||{a:[],b:[],w:[]}}catch(e){return{a:[],b:[],w:[]}}}
+function ld(){
+  try{
+    var d=JSON.parse(localStorage.getItem('kg'))||{a:[],b:[],w:[]};
+    var f2=false;
+    d.w.forEach(function(w){if(w.i&&typeof w.i==='object'){w.i=w.i._url||'';f2=true;}});
+    if(f2)localStorage.setItem('kg',JSON.stringify(d));
+    return d;
+  }catch(e){return{a:[],b:[],w:[]}}
+}
 function sd(d){localStorage.setItem('kg',JSON.stringify(d))}
 var D=ld();function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 var S={v:'home',aid:null,bid:null,wid:null,li:-1,mo:null,ei:null};
