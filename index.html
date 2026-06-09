@@ -585,56 +585,23 @@ function HF(files){
   var cfg=GC();
   Array.from(files).forEach(function(file){
     if(!file.type.startsWith('image/') && !file.name.match(/\.heic$/i) && !file.name.match(/\.heif$/i))return;
-    if(file.name.match(/\.heic$/i)){
-      // Try canvas conversion works on Safari, heic2any CDN for Chrome/Firefox
+    if(file.name.match(/\.(heic|heif)$/i)){
+      var _uiLen=UI.length;
+      UI.push({_conv:true});
+      RUP();
       h2j(file,function(jpg){
-        if(jpg)processFile(jpg,cfg);
+        if(_uiLen<UI.length&&UI[_uiLen]&&UI[_uiLen]._conv)UI.splice(_uiLen,1);
+        if(_uiLen<UI.length&&UI[_uiLen]&&UI[_uiLen]._conv)UI.splice(_uiLen,1);
+        if(jpg){procF(jpg,cfg);}else{alert('\u8F6C\u6362\u5931\u8D25\uFF0C\u8BF7\u5148\u5C06\u56FE\u7247\u8F6C\u4E3A JPG \u683C\u5F0F');}
       });
     }else{
-      processFile(file,cfg);
+      procF(file,cfg);
     }
   });
 }
 
-function processFile(file,cfg){
-  if(cfg && cfg.t){
-    var ext=file.name.split('.').pop()||'jpg';
-    var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;
-    var msg='Add artwork: '+fn;
-    var r2=new FileReader();
-    r2.onload=function(e){
-      var b64=e.target.result.split(',')[1];
-      UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});
-      RUP();
-      var x=new XMLHttpRequest();
-      x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
-      x.setRequestHeader('Authorization','Bearer '+cfg.t);
-      x.setRequestHeader('Content-Type','application/json');
-      x.onload=function(){
-        if(x.status>=200&&x.status<300){
-          var d=JSON.parse(x.responseText);
-          var idx=UI.findIndex(function(u){return u.fn===fn});
-          if(idx>=0){
-            UI[idx]={_url:d.content.download_url,_uploading:false,fn:fn};
-            RUP();
-          }
-        }else{
-          var idx=UI.findIndex(function(u){return u.fn===fn});
-          if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}
-        }
-      };
-      x.onerror=function(){
-        var idx=UI.findIndex(function(u){return u.fn===fn});
-        if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');}
-      };
-      x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));
-    };
-    r2.readAsDataURL(file);
-  }else{
-    var r=new FileReader();
-    r.onload=function(e){UI.push(e.target.result);RUP();};
-    r.readAsDataURL(file);
-  }
+function procF(file,cfg){
+  if(cfg && cfg.t){var ext=file.name.split('.').pop()||'jpg';var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;var msg='Add artwork: '+fn;var r2=new FileReader();r2.onload=function(e){var b64=e.target.result.split(',')[1];UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});RUP();var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');x.onload=function(){if(x.status>=200&&x.status<300){var d=JSON.parse(x.responseText);var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI[idx]={_url:d.content.download_url,_uploading:false,fn:fn};RUP();}}else{var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u4E0A\u4F20\u5931\u8D25: '+x.status);}}};x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u7F51\u7EDC\u9519\u8BEF\uFF0C\u4E0A\u4F20\u5931\u8D25');};};x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));};r2.readAsDataURL(file);}else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
 }
 
 function h2j(file,cb){
@@ -642,40 +609,40 @@ function h2j(file,cb){
   var img=new Image();
   img.onload=function(){
     URL.revokeObjectURL(url);
-    var c=document.createElement('canvas');
-    c.width=img.width;c.height=img.height;
-    c.getContext('2d').drawImage(img,0,0);
-    c.toBlob(function(b){
-      cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-    },'image/jpeg',0.92);
+    try{
+      var c=document.createElement('canvas');
+      c.width=img.width;c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      c.toBlob(function(b){
+        if(b)cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+        else cl();
+      },'image/jpeg',0.92);
+    }catch(e){cl();}
   };
-  img.onerror=function(){
+  function cl(){
     URL.revokeObjectURL(url);
-    if(!window.heic2any){
-      var s=document.createElement('script');
-      s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-      document.head.appendChild(s);
-      s.onload=function(){
-        heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
-          var b=r instanceof Blob?r:r[0];
-          cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-        });
-      };
-      s.onerror=function(){alert('HEIC转换失败');cb(null);};
-    }else{
-      heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
-        var b=r instanceof Blob?r:r[0];
-        cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-      });
-    }
-  };
+    if(window.heic2any){runH2A();return;}
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload=runH2A;s.onerror=function(){alert('\u52A0\u8F7D\u8F6C\u6362\u5E93\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');cb(null);};
+    document.head.appendChild(s);
+  }
+  function runH2A(){
+    heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
+      var b=r instanceof Blob?r:r[0];
+      cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+    }).catch(function(e){alert('\u8F6C\u6362\u5931\u8D25: '+e.message);cb(null);});
+  }
+  img.onerror=function(){cl();};
   img.src=url;
 }
-
 function RUP(){
   var up=document.getElementById('fUP');
   if(!up)return;
   up.innerHTML=UI.map(function(img,i){
+    if(img && img._conv){
+      return '<div style="position:relative;display:inline-flex;width:80px;height:80px;align-items:center;justify-content:center;border-radius:8px;border:2px solid var(--border);background:var(--bg);font-size:13px;color:var(--text-secondary)">🔄</div>';
+    }
     if(img && img._uploading){
       return '<div style="position:relative;display:inline-block;width:80px;height:80px;border-radius:8px;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px">⏳</div>';
     }
