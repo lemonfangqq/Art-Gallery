@@ -534,10 +534,13 @@ function AME(){
       var bid=document.getElementById('fWB').value;
       var t=document.getElementById('fWT').value.trim();
       if(!aid||!bid||!t||UI.length===0){sk(sUW);return;}
+      var anyUp=UI.some(function(u){return u&&u._uploading});
+      if(anyUp){alert('请等待上传完成');return;}
       var d=document.getElementById('fWD').value.trim();
       var today=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
       UI.forEach(function(img){
-        D.w.push({id:id(),bid:bid,aid:aid,t:t,d:d,i:img,date:today,at:new Date().toISOString()});
+        var src=img&&img._url?img._url:img;
+        D.w.push({id:id(),bid:bid,aid:aid,t:t,d:d,i:src,date:today,at:new Date().toISOString()});
       });
       sd(D);C();R();UI=[];
     });
