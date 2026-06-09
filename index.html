@@ -150,6 +150,9 @@ var D=ld();function id(){return Date.now().toString(36)+Math.random().toString(3
 var S={v:'home',aid:null,bid:null,wid:null,li:-1,mo:null,ei:null};
 var UI=[];
 
+function GC(){try{return JSON.parse(localStorage.getItem('kg_cfg'))||{}}catch(e){return{}}}
+function SC(cfg){localStorage.setItem('kg_cfg',JSON.stringify(cfg))}
+
 function es(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function sk(el){el.style.animation='shake .3s';setTimeout(function(){el.style.animation='';},300);}
 
@@ -214,7 +217,7 @@ function R(){
         if(a==='addArtist')M('addArtist');
         else if(a==='addAlbum')M('addAlbum');
         else if(a==='uploadArtwork')M('uploadArtwork');
-        else if(a==='home'||a==='artist'||a==='album')nav(a,id||undefined);
+        else if(a==='settings')M('settings');else if(a==='home'||a==='artist'||a==='album')nav(a,id||undefined);
       });
     });
   }
@@ -364,6 +367,7 @@ function MO(){
   else if(S.mo==='editAlbum')h=AM4();
   else if(S.mo==='uploadArtwork')h=AM5();
   else if(S.mo==='editArtwork')h=AM6();
+  else if(S.mo==='settings')h=AM7();
   else{el.innerHTML='';return;}
   el.innerHTML='<div class="modal-overlay" id="modalOv">'+h+'</div>';
   document.getElementById('modalOv').addEventListener('click',function(e){if(e.target===e.currentTarget)C();});
@@ -404,7 +408,7 @@ function AM5(){
   D.a.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===pa?' selected':'')+'>'+esc(a.n)+'</option>';});
   h+='</select></div><div class="form-group"><label>选择画集 *</label><select id="fWB" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
   al.forEach(function(b){h+='<option value="'+b.id+'"'+(b.id===pb?' selected':'')+'>'+esc(b.n)+'</option>';});
-  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub">支持 JPG、PNG 格式</div></div><input type="file" id="fFI" accept="image/*" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
+  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub" id="uploadHint">支持 JPG、PNG、HEIC(苹果) 格式</div></div><input type="file" id="fFI" accept="image/*,.heic,.heif,.HEIC,.HEIF" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
   return h;
 }
 
@@ -412,6 +416,10 @@ function AM6(){
   var w=D.w.find(function(x){return x.id===S.ei});
   if(!w)return '';
   return '<div class="modal"><div class="modal-header"><h2>编辑作品信息</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>标题 *</label><input type="text" id="fWT" value="'+esc(w.t)+'" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" maxlength="300">'+esc(w.desc||'')+'</textarea></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sEW">保存修改</button></div></div>';
+}
+function AM7(){
+  var cfg=GC();
+  return '<div class="modal"><div class="modal-header"><h2>GitHub 存储设置</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>GitHub Token *</label><input type="password" id="fGHT" value="'+(cfg.t||'')+'" placeholder="ghp_xxx 或 github_pat_xxx" style="font-family:monospace"><div class="hint" style="font-size:12px;color:var(--text-secondary);margin-top:4px">需要 repo 写入权限，建议用 fine-grained PAT</div></div><div class="form-group"><label>仓库拥有者</label><input type="text" id="fGHO" value="'+(cfg.o||'lemonfangqq')+'" placeholder="GitHub 用户名或组织"></div><div class="form-group"><label>仓库名</label><input type="text" id="fGHR" value="'+(cfg.r||'Art-Gallery')+'" placeholder="仓库名称"></div><div class="form-group"><label>分支</label><input type="text" id="fGHB" value="'+(cfg.b||'main')+'" placeholder="main"></div><div style="background:var(--bg);padding:12px;border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);line-height:1.6"><strong>📌 上传后图片将保存到：</strong><br><code style="word-break:break-all">https://github.com/'+(cfg.o||'lemonfangqq')+'/'+(cfg.r||'Art-Gallery')+'/blob/'+(cfg.b||'main')+'/images/日期/文件名</code></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sGHS">保存设置</button></div></div>';
 }
 
 function AME(){
@@ -429,6 +437,13 @@ function AME(){
   var ua=document.getElementById('fUA');
   var fi=document.getElementById('fFI');
   var up=document.getElementById('fUP');
+  // Show GitHub status hint
+  var uh=document.getElementById('uploadHint');
+  if(uh){
+    var cfg2=GC();
+    if(cfg2&&cfg2.t){uh.textContent='配置 GitHub 中 • 支持 JPG、PNG、HEIC';}
+    else{uh.innerHTML='未配置 GitHub • 图片存在本地 <button class="btn btn-ghost btn-sm" onclick="C();M('settings')" style="text-decoration:underline">去设置</button>';}
+  }
   if(ua&&fi){
     ua.addEventListener('click',function(){fi.click();});
     ua.addEventListener('dragover',function(e){e.preventDefault();ua.classList.add('dragover');});
@@ -540,14 +555,64 @@ function AME(){
       sd(D);C();R();
     });
   }
+  // Submit GitHub settings
+  var sGHS=document.getElementById('sGHS');
+  if(sGHS){
+    sGHS.addEventListener('click',function(){
+      var t=document.getElementById('fGHT').value.trim();
+      var o=document.getElementById('fGHO').value.trim()||'lemonfangqq';
+      var r=document.getElementById('fGHR').value.trim()||'Art-Gallery';
+      var b=document.getElementById('fGHB').value.trim()||'main';
+      if(!t){sk(sGHS);return;}
+      SC({t:t,o:o,r:r,b:b});
+      C();R();
+    });
+  }
 }
 
 function HF(files){
+  var cfg=GC();
   Array.from(files).forEach(function(file){
-    if(!file.type.startsWith('image/'))return;
-    var r=new FileReader();
-    r.onload=function(e){UI.push(e.target.result);RUP();};
-    r.readAsDataURL(file);
+    if(!file.type.startsWith('image/') && !file.name.match(/\.heic$/i) && !file.name.match(/\.heif$/i))return;
+    if(cfg && cfg.t){
+      var ext=file.name.split('.').pop()||'jpg';
+      var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;
+      var msg='Add artwork: '+fn;
+      var r2=new FileReader();
+      r2.onload=function(e){
+        var b64=e.target.result.split(',')[1];
+        UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});
+        RUP();
+        // upload to github
+        var x=new XMLHttpRequest();
+        x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
+        x.setRequestHeader('Authorization','Bearer '+cfg.t);
+        x.setRequestHeader('Content-Type','application/json');
+        x.onload=function(){
+          if(x.status>=200&&x.status<300){
+            var d=JSON.parse(x.responseText);
+            var idx=UI.findIndex(function(u){return u.fn===fn});
+            if(idx>=0){
+              UI[idx]={_url:d.content.download_url,_uploading:false,fn:fn};
+              RUP();
+            }
+          }else{
+            var idx=UI.findIndex(function(u){return u.fn===fn});
+            if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}
+          }
+        };
+        x.onerror=function(){
+          var idx=UI.findIndex(function(u){return u.fn===fn});
+          if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');}
+        };
+        x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));
+      };
+      r2.readAsDataURL(file);
+    }else{
+      var r=new FileReader();
+      r.onload=function(e){UI.push(e.target.result);RUP();};
+      r.readAsDataURL(file);
+    }
   });
 }
 
@@ -555,7 +620,11 @@ function RUP(){
   var up=document.getElementById('fUP');
   if(!up)return;
   up.innerHTML=UI.map(function(img,i){
-    return '<div style="position:relative;display:inline-block"><img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="var x=parseInt(this.dataset.idx);UI.splice(x,1);RUP();" data-idx="'+i+'" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
+    if(img && img._uploading){
+      return '<div style="position:relative;display:inline-block;width:80px;height:80px;border-radius:8px;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px">⏳</div>';
+    }
+    var src=img && img._url ? img._url : img;
+    return '<div style="position:relative;display:inline-block"><img src="'+src+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="var x=parseInt(this.dataset.idx);UI.splice(x,1);RUP();" data-idx="'+i+'" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
   }).join('');
 }
 
