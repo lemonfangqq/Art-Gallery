@@ -416,7 +416,7 @@ function AM5(){
   D.a.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===pa?' selected':'')+'>'+esc(a.n)+'</option>';});
   h+='</select></div><div class="form-group"><label>选择画集 *</label><select id="fWB" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
   al.forEach(function(b){h+='<option value="'+b.id+'"'+(b.id===pb?' selected':'')+'>'+esc(b.n)+'</option>';});
-  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub" id="uploadHint">支持 JPG、PNG、HEIC(苹果) 格式</div></div><input type="file" id="fFI" accept="image/*,.heic,.heif,.HEIC,.HEIF" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
+  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub" id="uploadHint">支持 JPG、PNG、HEIC(自动转JPG) 格式</div></div><input type="file" id="fFI" accept="image/*,.heic,.heif,.HEIC,.HEIF" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
   return h;
 }
 
@@ -449,7 +449,7 @@ function AME(){
   var uh=document.getElementById('uploadHint');
   if(uh){
     var cfg2=GC();
-    if(cfg2&&cfg2.t){uh.textContent='配置 GitHub 中 • 支持 JPG、PNG、HEIC';}
+    if(cfg2&&cfg2.t){uh.textContent='配置 GitHub 中 • 支持 JPG、PNG、HEIC(自动转JPG)';}
     else{uh.innerHTML='未配置 GitHub • 图片存在本地 <button class="btn btn-ghost btn-sm" onclick="C();M(&#39;settings&#39;)" style="text-decoration:underline">去设置</button>';}
   }
   if(ua&&fi){
@@ -585,46 +585,91 @@ function HF(files){
   var cfg=GC();
   Array.from(files).forEach(function(file){
     if(!file.type.startsWith('image/') && !file.name.match(/\.heic$/i) && !file.name.match(/\.heif$/i))return;
-    if(cfg && cfg.t){
-      var ext=file.name.split('.').pop()||'jpg';
-      var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;
-      var msg='Add artwork: '+fn;
-      var r2=new FileReader();
-      r2.onload=function(e){
-        var b64=e.target.result.split(',')[1];
-        UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});
-        RUP();
-        // upload to github
-        var x=new XMLHttpRequest();
-        x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
-        x.setRequestHeader('Authorization','Bearer '+cfg.t);
-        x.setRequestHeader('Content-Type','application/json');
-        x.onload=function(){
-          if(x.status>=200&&x.status<300){
-            var d=JSON.parse(x.responseText);
-            var idx=UI.findIndex(function(u){return u.fn===fn});
-            if(idx>=0){
-              UI[idx]={_url:d.content.download_url,_uploading:false,fn:fn};
-              RUP();
-            }
-          }else{
-            var idx=UI.findIndex(function(u){return u.fn===fn});
-            if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}
-          }
-        };
-        x.onerror=function(){
-          var idx=UI.findIndex(function(u){return u.fn===fn});
-          if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');}
-        };
-        x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));
-      };
-      r2.readAsDataURL(file);
+    if(file.name.match(/\.heic$/i)){
+      // Try canvas conversion works on Safari, heic2any CDN for Chrome/Firefox
+      h2j(file,function(jpg){
+        if(jpg)processFile(jpg,cfg);
+      });
     }else{
-      var r=new FileReader();
-      r.onload=function(e){UI.push(e.target.result);RUP();};
-      r.readAsDataURL(file);
+      processFile(file,cfg);
     }
   });
+}
+
+function processFile(file,cfg){
+  if(cfg && cfg.t){
+    var ext=file.name.split('.').pop()||'jpg';
+    var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;
+    var msg='Add artwork: '+fn;
+    var r2=new FileReader();
+    r2.onload=function(e){
+      var b64=e.target.result.split(',')[1];
+      UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});
+      RUP();
+      var x=new XMLHttpRequest();
+      x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
+      x.setRequestHeader('Authorization','Bearer '+cfg.t);
+      x.setRequestHeader('Content-Type','application/json');
+      x.onload=function(){
+        if(x.status>=200&&x.status<300){
+          var d=JSON.parse(x.responseText);
+          var idx=UI.findIndex(function(u){return u.fn===fn});
+          if(idx>=0){
+            UI[idx]={_url:d.content.download_url,_uploading:false,fn:fn};
+            RUP();
+          }
+        }else{
+          var idx=UI.findIndex(function(u){return u.fn===fn});
+          if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}
+        }
+      };
+      x.onerror=function(){
+        var idx=UI.findIndex(function(u){return u.fn===fn});
+        if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');}
+      };
+      x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));
+    };
+    r2.readAsDataURL(file);
+  }else{
+    var r=new FileReader();
+    r.onload=function(e){UI.push(e.target.result);RUP();};
+    r.readAsDataURL(file);
+  }
+}
+
+function h2j(file,cb){
+  var url=URL.createObjectURL(file);
+  var img=new Image();
+  img.onload=function(){
+    URL.revokeObjectURL(url);
+    var c=document.createElement('canvas');
+    c.width=img.width;c.height=img.height;
+    c.getContext('2d').drawImage(img,0,0);
+    c.toBlob(function(b){
+      cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+    },'image/jpeg',0.92);
+  };
+  img.onerror=function(){
+    URL.revokeObjectURL(url);
+    if(!window.heic2any){
+      var s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+      document.head.appendChild(s);
+      s.onload=function(){
+        heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
+          var b=r instanceof Blob?r:r[0];
+          cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+        });
+      };
+      s.onerror=function(){alert('HEIC转换失败');cb(null);};
+    }else{
+      heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
+        var b=r instanceof Blob?r:r[0];
+        cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+      });
+    }
+  };
+  img.src=url;
 }
 
 function RUP(){
