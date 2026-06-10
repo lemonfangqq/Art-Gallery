@@ -638,66 +638,63 @@ function AME(){
 function HF(files){
   var cfg=GC();
   Array.from(files).forEach(function(file){
-    if(!file.type.startsWith('image/') && !file.name.match(/\.heic$/i) && !file.name.match(/\.heif$/i))return;
-    if(file.name.match(/\.(heic|heif)$/i)){
-      var _uiLen=UI.length;
-      UI.push({_conv:true});
-      RUP();
-      h2j(file,function(jpg){
-        if(_uiLen<UI.length&&UI[_uiLen]&&UI[_uiLen]._conv)UI.splice(_uiLen,1);
-        if(jpg){procF(jpg,cfg);}else{alert('\u8F6C\u6362\u5931\u8D25\uFF0C\u8BF7\u5148\u5C06\u56FE\u7247\u8F6C\u4E3A JPG \u683C\u5F0F');}
-      });
-    }else{
-      procF(file,cfg);
-    }
+    if(!file.type.startsWith('image/') && !file.name.match(/\.(heic|heif)$/i))return;
+    var _ui=UI.length;
+    UI.push({_conv:true});RUP();
+    cps(file,function(optFile){
+      if(_ui<UI.length&&UI[_ui]&&UI[_ui]._conv)UI.splice(_ui,1);
+      if(optFile)procF(optFile,cfg);
+    });
   });
 }
 
-function procF(file,cfg){
-  if(cfg && cfg.t){var ext=file.name.split('.').pop()||'jpg';var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;var msg='Add artwork: '+fn;var r2=new FileReader();r2.onload=function(e){var b64=e.target.result.split(',')[1];UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});RUP();var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');x.onload=function(){if(x.status>=200&&x.status<300){var d=JSON.parse(x.responseText);var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI[idx]={_url:'https://cdn.jsdelivr.net/gh/'+cfg.o+'/'+cfg.r+'@'+(cfg.b||'main')+'/'+fn,_uploading:false,fn:fn};RUP();}}else{var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u4E0A\u4F20\u5931\u8D25: '+x.status);}}};x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u7F51\u7EDC\u9519\u8BEF\uFF0C\u4E0A\u4F20\u5931\u8D25');};};x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));};r2.readAsDataURL(file);}else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
-}
-
-function h2j(file,cb){
+function cps(file,cb){
   var url=URL.createObjectURL(file);
   var img=new Image();
   img.onload=function(){
     URL.revokeObjectURL(url);
     try{
-      var c=document.createElement('canvas');
-      c.width=img.width;c.height=img.height;
-      c.getContext('2d').drawImage(img,0,0);
-      c.toBlob(function(b){
-        if(b)cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-        else cl();
-      },'image/jpeg',0.92);
-    }catch(e){cl();}
+      var cvs=document.createElement('canvas');
+      var mw=1200,mh=1200;
+      var w=img.width,h=img.height;
+      if(w>mw||h>mh){var r=Math.min(mw/w,mh/h);w=Math.round(w*r);h=Math.round(h*r);}
+      cvs.width=w;cvs.height=h;
+      cvs.getContext('2d').drawImage(img,0,0,w,h);
+      cvs.toBlob(function(b){
+        if(b)cb(new File([b],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}));
+        else cb(file);
+      },'image/jpeg',0.85);
+    }catch(e){cb(file);}
   };
-  function cl(){
+  img.onerror=function(){
     URL.revokeObjectURL(url);
-    if(window.heic2any){runH2A();return;}
-    var cdns=[
-      'https://cdn.jsdelivr.net/npm/heic2any@0.0.5/dist/heic2any.min.js',
-      'https://unpkg.com/heic2any@0.0.5/dist/heic2any.min.js'
-    ];
-    var ci=0;
-    function tryLoad(){
-      if(ci>=cdns.length){alert('\u52A0\u8F7D\u8F6C\u6362\u5E93\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');cb(null);return;}
-      var s=document.createElement('script');
-      s.src=cdns[ci];
-      s.onload=runH2A;
-      s.onerror=function(){ci++;tryLoad();};
-      document.head.appendChild(s);
-    }
-    tryLoad();
-  }
-  function runH2A(){
-    heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
-      var b=r instanceof Blob?r:r[0];
-      cb(new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-    }).catch(function(e){alert('\u8F6C\u6362\u5931\u8D25: '+e.message);cb(null);});
-  }
-  img.onerror=function(){cl();};
+    if(file.name.match(/\.(heic|heif)$/i)){h2cdn(file,cb);}
+    else{cb(file);}
+  };
   img.src=url;
+}
+
+function h2cdn(file,cb){
+  if(window.heic2any){h2do(file,cb);return;}
+  var cdns=['https://cdn.jsdelivr.net/npm/heic2any@0.0.5/dist/heic2any.min.js','https://unpkg.com/heic2any@0.0.5/dist/heic2any.min.js'];
+  var ci=0;
+  (function tl(){
+    if(ci>=cdns.length){alert('HEIC转换库加载失败');cb(null);return;}
+    var s=document.createElement('script');s.src=cdns[ci];
+    s.onload=function(){h2do(file,cb);};s.onerror=function(){ci++;tl();};
+    document.head.appendChild(s);
+  })();
+}
+
+function h2do(file,cb){
+  heic2any({blob:file,toType:'image/jpeg',quality:0.85}).then(function(r){
+    var b=r instanceof Blob?r:r[0];
+    cps(new File([b],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}),cb);
+  }).catch(function(e){alert('HEIC转换失败:'+e.message);cb(null);});
+}
+
+function procF(file,cfg){
+  if(cfg && cfg.t){var ext=file.name.split('.').pop()||'jpg';var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;var msg='Add artwork: '+fn;var r2=new FileReader();r2.onload=function(e){var b64=e.target.result.split(',')[1];UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});RUP();var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');x.onload=function(){if(x.status>=200&&x.status<300){var d=JSON.parse(x.responseText);var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI[idx]={_url:'https://cdn.jsdelivr.net/gh/'+cfg.o+'/'+cfg.r+'@'+(cfg.b||'main')+'/'+fn,_uploading:false,fn:fn};RUP();}}else{var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}}};x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');};};x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));};r2.readAsDataURL(file);}else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
 }
 function RUP(){
   var up=document.getElementById('fUP');
