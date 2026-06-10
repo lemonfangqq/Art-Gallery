@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -153,13 +153,63 @@ function ld(){
     return d;
   }catch(e){return{a:[],b:[],w:[]}}
 }
-function sd(d){localStorage.setItem('kg',JSON.stringify(d))}
+function sd(d){localStorage.setItem('kg',JSON.stringify(d));var cfg=GC();if(!cfg.t||!cfg.o||!cfg.r)return;if(_pushTimer)clearTimeout(_pushTimer);_pushTimer=setTimeout(function(){pushToGH(d);},500);}
 var D=ld();function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 var S={v:'home',aid:null,bid:null,wid:null,li:-1,mo:null,ei:null};
 var UI=[];
+var _ghSha=null;
+var _pushTimer=null;
+
+(function loadFromGitHub(){
+  var cfg=GC();
+  if(!cfg.t||!cfg.o||!cfg.r)return;
+  var h=new XMLHttpRequest();
+  h.open('GET','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/data.json?ref='+(cfg.b||'main'),true);
+  h.setRequestHeader('Authorization','Bearer '+cfg.t);
+  h.onload=function(){
+    if(h.status===200){
+      try{
+        var r=JSON.parse(h.responseText);
+        if(r.content){
+          var remote=JSON.parse(decodeURIComponent(escape(atob(r.content))));
+          D.a=remote.a||[];
+          D.b=remote.b||[];
+          D.w=remote.w||[];
+          _ghSha=r.sha;
+          localStorage.setItem('kg',JSON.stringify(D));
+          R();
+        }
+      }catch(e){}
+    }
+  };
+  h.send();
+})();
 
 function GC(){try{return JSON.parse(localStorage.getItem('kg_cfg'))||{}}catch(e){return{}}}
 function SC(cfg){localStorage.setItem('kg_cfg',JSON.stringify(cfg))}
+
+function pushToGH(d){
+  var cfg=GC();
+  if(!cfg.t||!cfg.o||!cfg.r)return;
+  var api='https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/data.json';
+  var h0=new XMLHttpRequest();
+  h0.open('GET',api+'?ref='+(cfg.b||'main'),true);
+  h0.setRequestHeader('Authorization','Bearer '+cfg.t);
+  h0.onload=function(){
+    var sha=null;
+    if(h0.status===200){try{sha=JSON.parse(h0.responseText).sha;}catch(e){}}
+    var body=JSON.stringify({message:'Update gallery data',content:btoa(unescape(encodeURIComponent(JSON.stringify(d)))),branch:cfg.b||'main',sha:sha||void 0});
+    var h1=new XMLHttpRequest();
+    h1.open('PUT',api,true);
+    h1.setRequestHeader('Authorization','Bearer '+cfg.t);
+    h1.setRequestHeader('Content-Type','application/json');
+    h1.onload=function(){
+      if(h1.status>=200&&h1.status<300){try{_ghSha=JSON.parse(h1.responseText).content.sha;}catch(e){}}
+    };
+    h1.send(body);
+  };
+  h0.send();
+}
 
 function es(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function sk(el){el.style.animation='shake .3s';setTimeout(function(){el.style.animation='';},300);}
@@ -591,7 +641,6 @@ function HF(files){
       RUP();
       h2j(file,function(jpg){
         if(_uiLen<UI.length&&UI[_uiLen]&&UI[_uiLen]._conv)UI.splice(_uiLen,1);
-        if(_uiLen<UI.length&&UI[_uiLen]&&UI[_uiLen]._conv)UI.splice(_uiLen,1);
         if(jpg){procF(jpg,cfg);}else{alert('\u8F6C\u6362\u5931\u8D25\uFF0C\u8BF7\u5148\u5C06\u56FE\u7247\u8F6C\u4E3A JPG \u683C\u5F0F');}
       });
     }else{
@@ -622,10 +671,20 @@ function h2j(file,cb){
   function cl(){
     URL.revokeObjectURL(url);
     if(window.heic2any){runH2A();return;}
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-    s.onload=runH2A;s.onerror=function(){alert('\u52A0\u8F7D\u8F6C\u6362\u5E93\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');cb(null);};
-    document.head.appendChild(s);
+    var cdns=[
+      'https://cdn.jsdelivr.net/npm/heic2any@0.0.5/dist/heic2any.min.js',
+      'https://unpkg.com/heic2any@0.0.5/dist/heic2any.min.js'
+    ];
+    var ci=0;
+    function tryLoad(){
+      if(ci>=cdns.length){alert('\u52A0\u8F7D\u8F6C\u6362\u5E93\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');cb(null);return;}
+      var s=document.createElement('script');
+      s.src=cdns[ci];
+      s.onload=runH2A;
+      s.onerror=function(){ci++;tryLoad();};
+      document.head.appendChild(s);
+    }
+    tryLoad();
   }
   function runH2A(){
     heic2any({blob:file,toType:'image/jpeg',quality:0.92}).then(function(r){
