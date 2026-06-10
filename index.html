@@ -629,7 +629,7 @@ function AME(){
       var r=document.getElementById('fGHR').value.trim()||'Art-Gallery';
       var b=document.getElementById('fGHB').value.trim()||'main';
       if(!t){sk(sGHS);return;}
-      SC({t:t,o:o,r:r,b:b});
+      SC({t:t,r:r,b:b});
       C();R();
     });
   }
@@ -643,7 +643,7 @@ function HF(files){
     UI.push({_conv:true});RUP();
     cps(file,function(optFile){
       if(_ui<UI.length&&UI[_ui]&&UI[_ui]._conv)UI.splice(_ui,1);
-      if(optFile)procF(optFile,cfg);
+      if(optFile)procF(optFile,_orig,cfg);
     });
   });
 }
@@ -694,7 +694,44 @@ function h2do(file,cb){
 }
 
 function procF(file,cfg){
-  if(cfg && cfg.t){var ext=file.name.split('.').pop()||'jpg';var fn='images/'+new Date().toISOString().slice(0,10)+'/'+id()+'.'+ext;var msg='Add artwork: '+fn;var r2=new FileReader();r2.onload=function(e){var b64=e.target.result.split(',')[1];UI.push({_uploading:true,fn:fn,b64:b64,msg:msg});RUP();var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');x.onload=function(){if(x.status>=200&&x.status<300){var d=JSON.parse(x.responseText);var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI[idx]={_url:'https://cdn.jsdelivr.net/gh/'+cfg.o+'/'+cfg.r+'@'+(cfg.b||'main')+'/'+fn,_uploading:false,fn:fn};RUP();}}else{var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('上传失败: '+x.status);}}};x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('网络错误，上传失败');};};x.send(JSON.stringify({message:msg,content:b64,branch:cfg.b||'main'}));};r2.readAsDataURL(file);}else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
+  if(cfg && cfg.t){
+    var ext='jpg';var ds=new Date().toISOString().slice(0,10);var id2=id();
+    var fn='images/'+ds+'/'+id2+'.'+ext;
+    // Upload compressed
+    UI.push({_uploading:true,fn:fn,msg:fn});RUP();
+    var r2=new FileReader();r2.onload=function(e){
+      var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
+      x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');
+      x.onload=function(){
+        if(x.status>=200&&x.status<300){
+          var d=JSON.parse(x.responseText);var idx=UI.findIndex(function(u){return u.fn===fn});
+          if(idx>=0){
+            UI[idx]={_url:'https://cdn.jsdelivr.net/gh/'+cfg.o+'/'+cfg.r+'@'+(cfg.b||'main')+'/'+fn,_uploading:false,fn:fn};
+            RUP();
+            // Now upload original file
+            var oext=orig.name.split('.').pop();var ofn='images/'+ds+'/'+id2+'_original.'+oext;
+            var r3=new FileReader();r3.onload=function(ev){
+              var x2=new XMLHttpRequest();x2.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+ofn,true);
+              x2.setRequestHeader('Authorization','Bearer '+cfg.t);x2.setRequestHeader('Content-Type','application/json');
+              x2.onload=function(){
+                if(x2.status>=200&&x2.status<300){
+                  var d2=JSON.parse(x2.responseText);var idx2=UI.findIndex(function(u){return u.fn===fn});
+                  if(idx2>=0){
+                    UI[idx2]._origUrl='https://cdn.jsdelivr.net/gh/'+cfg.o+'/'+cfg.r+'@'+(cfg.b||'main')+'/'+ofn;
+                    RUP();
+                  }
+                }
+              };
+              x2.send(JSON.stringify({message:fn,content:ev.target.result.split(',')[1],branch:cfg.b||'main'}));
+            };r3.readAsDataURL(orig);
+          }
+        }else{var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u4E0A\u4F20\u5931\u8D25: '+x.status);}}
+      };
+      x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u7F51\u7EDC\u9519\u8BEF');}};
+      x.send(JSON.stringify({message:fn,content:b64,branch:cfg.b||'main'}));
+    };var b64=e.target.result.split(',')[1];
+    r2.readAsDataURL(file);
+  }else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
 }
 function RUP(){
   var up=document.getElementById('fUP');
