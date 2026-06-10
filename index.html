@@ -416,6 +416,7 @@ function LB(){
   document.getElementById('modalContainer').innerHTML=h;
   document.getElementById('LBO').addEventListener('click',function(e){if(e.target===e.currentTarget){S.li=-1;document.getElementById('modalContainer').innerHTML='';}});
   document.addEventListener('keydown',LKK);
+  setTimeout(AI,50);
 }
 
 function LBX(){S.li=-1;document.getElementById('modalContainer').innerHTML='';document.removeEventListener('keydown',LKK);}
