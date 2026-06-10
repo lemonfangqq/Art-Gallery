@@ -160,29 +160,33 @@ var UI=[];
 var _ghSha=null;
 var _pushTimer=null;
 
-(function loadFromGitHub(){
-  var cfg=GC();
-  if(!cfg.t||!cfg.o||!cfg.r)return;
-  var h=new XMLHttpRequest();
-  h.open('GET','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/data.json?ref='+(cfg.b||'main'),true);
-  h.setRequestHeader('Authorization','Bearer '+cfg.t);
-  h.onload=function(){
-    if(h.status===200){
-      try{
-        var r=JSON.parse(h.responseText);
-        if(r.content){
-          var remote=JSON.parse(decodeURIComponent(escape(atob(r.content))));
-          D.a=remote.a||[];
-          D.b=remote.b||[];
-          D.w=remote.w||[];
-          _ghSha=r.sha;
-          localStorage.setItem('kg',JSON.stringify(D));
-          R();
-        }
-      }catch(e){}
-    }
+(function(){
+  var x=new XMLHttpRequest();
+  x.open('GET','data.json?'+Date.now(),true);
+  x.onload=function(){
+    if(x.status===200){try{
+      var d=JSON.parse(x.responseText);
+      D.a=d.a||[];D.b=d.b||[];D.w=d.w||[];
+      localStorage.setItem('kg',JSON.stringify(D));R();
+    }catch(e){}}
   };
-  h.send();
+  x.send();
+  var cfg=GC();
+  if(cfg.t&&cfg.o&&cfg.r){
+    var h=new XMLHttpRequest();
+    h.open('GET','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/data.json?ref='+(cfg.b||'main'),true);
+    h.setRequestHeader('Authorization','Bearer '+cfg.t);
+    h.onload=function(){
+      if(h.status===200){try{
+        var r=JSON.parse(h.responseText);
+        if(r.content){var rm=JSON.parse(decodeURIComponent(escape(atob(r.content))));
+          D.a=rm.a||[];D.b=rm.b||[];D.w=rm.w||[];_ghSha=r.sha;
+          localStorage.setItem('kg',JSON.stringify(D));R();
+        }}catch(e){}
+      }
+    };
+    h.send();
+  }
 })();
 
 function GC(){try{return JSON.parse(localStorage.getItem('kg_cfg'))||{}}catch(e){return{}}}
