@@ -658,7 +658,7 @@ function HF(files){
     UI.push({_conv:true});RUP();
     cps(file,function(optFile){
       if(_ui<UI.length&&UI[_ui]&&UI[_ui]._conv)UI.splice(_ui,1);
-      if(optFile)procF(optFile,_orig,cfg);
+      if(optFile)procF(optFile,file,cfg);
     });
   });
 }
@@ -708,7 +708,7 @@ function h2do(file,cb){
   }).catch(function(e){alert('HEIC转换失败:'+e.message);cb(null);});
 }
 
-function procF(file,cfg){
+function procF(file,orig,cfg){
   if(cfg && cfg.t){
     var ext='jpg';var ds=new Date().toISOString().slice(0,10);var id2=id();
     var fn='images/'+ds+'/'+id2+'.'+ext;
