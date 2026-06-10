@@ -366,7 +366,7 @@ function detail(){
   h+='<div style="background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);position:sticky;top:calc(64px + 20px)"><h2 style="font-size:20px;font-weight:600;margin-bottom:4px">'+esc(w.t)+'</h2>';
   h+='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">'+(at?esc(at.n):'')+' · '+(w.d||'')+(al?' <span style="opacity:.5">·</span> <a onclick="nav(\'album\',\''+al.id+'\')" style="color:var(--primary);cursor:pointer">'+esc(al.n)+'</a>':'')+'</div>';
   if(w.desc)h+='<p style="font-size:14px;line-height:1.7;margin-bottom:20px">'+esc(w.desc)+'</p>';
-  h+='<div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-outline btn-sm" onclick="M(\'editArtwork\',\''+w.id+'\')">✏️ 编辑信息</button><button class="btn btn-danger btn-sm" onclick="CF(\''+w.id+'\')">🗑️ 删除作品</button></div></div></div>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-outline btn-sm" onclick="downloadImg(\''+w.id+'\')">⬇ 下载原图</button><button class="btn btn-outline btn-sm" onclick="M(\'editArtwork\',\''+w.id+'\')">✏️ 编辑信息</button><button class="btn btn-danger btn-sm" onclick="CF(\''+w.id+'\')">🗑️ 删除作品</button></div></div></div>';
   return h;
 }
 
@@ -384,6 +384,19 @@ function AE(){
   // no extra binding needed - most use inline onclick
 }
 
+function downloadImg(id){
+  var w=D.w.find(function(x){return x.id===id});
+  if(!w)return;
+  var url=w.io||w.i;
+  var ext=url.split('.').pop().split('?')[0]||'jpg';
+  fetch(url).then(function(r){return r.blob()}).then(function(b){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=(w.t||'artwork')+'.'+ext;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }).catch(function(){alert('下载失败');});
+}
 function OL(id){
   var ws=D.w.filter(function(w){return w.bid===S.bid});
   var idx=ws.findIndex(function(w){return w.id===id});
@@ -602,7 +615,8 @@ function AME(){
       var today=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
       UI.forEach(function(img){
         var src=img&&img._url?img._url:img;
-        D.w.push({id:id(),bid:bid,aid:aid,t:t,d:d,i:src,date:today,at:new Date().toISOString()});
+        var origUrl=img&&img._origUrl?img._origUrl:'';
+        D.w.push({id:id(),bid:bid,aid:aid,t:t,d:d,i:src,io:origUrl,date:today,at:new Date().toISOString()});
       });
       sd(D);C();R();UI=[];
     });
