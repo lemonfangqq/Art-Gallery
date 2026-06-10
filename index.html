@@ -715,6 +715,7 @@ function procF(file,orig,cfg){
     // Upload compressed
     UI.push({_uploading:true,fn:fn,msg:fn});RUP();
     var r2=new FileReader();r2.onload=function(e){
+      var b64=e.target.result.split(',')[1];
       var x=new XMLHttpRequest();x.open('PUT','https://api.github.com/repos/'+cfg.o+'/'+cfg.r+'/contents/'+fn,true);
       x.setRequestHeader('Authorization','Bearer '+cfg.t);x.setRequestHeader('Content-Type','application/json');
       x.onload=function(){
@@ -744,7 +745,7 @@ function procF(file,orig,cfg){
       };
       x.onerror=function(){var idx=UI.findIndex(function(u){return u.fn===fn});if(idx>=0){UI.splice(idx,1);alert('\u7F51\u7EDC\u9519\u8BEF');}};
       x.send(JSON.stringify({message:fn,content:b64,branch:cfg.b||'main'}));
-    };var b64=e.target.result.split(',')[1];
+    };
     r2.readAsDataURL(file);
   }else{var r=new FileReader();r.onload=function(e){UI.push(e.target.result);RUP();};r.readAsDataURL(file);}
 }
