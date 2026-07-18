@@ -2,8 +2,7 @@ services:
   - type: web
     name: art-gallery
     env: docker
-    dockerfilePath: server/Dockerfile
-    dockerContext: server
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/artists
     envVars:
       - key: NODE_ENV

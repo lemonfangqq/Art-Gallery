@@ -1,8 +1,0 @@
-node_modules
-npm-debug.log
-data
-dist
-.git
-.gitignore
-*.md
-.DS_Store

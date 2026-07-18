@@ -1,0 +1,8 @@
+node_modules/
+.git/
+data/
+.DS_Store
+*.md
+*.log
+.env
+.omo/
