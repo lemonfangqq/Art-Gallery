@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: art-gallery
+    env: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /api/artists
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /app/data/gallery.db
+      - key: IMAGES_PATH
+        value: /app/data/images
+    disk:
+      name: gallery-data
+      mountPath: /app/data
+      sizeGB: 1
