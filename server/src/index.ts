@@ -71,6 +71,10 @@ if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // ─── Multer (image upload) ───
 const storage = multer.memoryStorage();
 const upload = multer({
