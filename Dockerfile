@@ -10,11 +10,21 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libvips libvips-dev \
-    libwebp-dev libwebp7 \
-    libheif-dev libheif1 \
-    libde265-0 libde265-dev \
-    libx265-199 libx265-dev && rm -rf /var/lib/apt/lists/*
+    libvips42 libvips-dev \
+    libheif1 libheif-dev \
+    libheif-plugin-libde265 \
+    libheif-plugin-x265 \
+    libde265-0 \
+    libx265-199 \
+    libwebp7 libwebp-dev \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libtiff6 \
+    libexpat1 \
+    libffi8 \
+    ca-certificates \
+    && ldconfig \
+    && rm -rf /var/lib/apt/lists/*
 COPY server/package.json ./
 RUN npm install --production
 COPY --from=builder /app/dist ./dist
@@ -22,4 +32,6 @@ COPY --from=builder /app/public ./public
 EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=0
+ENV SHARP_FORCE_GLOBAL_LIBVIPS=1
 CMD ["node", "dist/index.js"]
