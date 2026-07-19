@@ -330,7 +330,7 @@ function artist(){
   var al=D.b.filter(function(x){return (x.aid||x.artist_id)===at.id});
   var name=at.n||at.name;
   var bio=at.b||at.bio||'';
-  var h='<div class="section-header" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:16px"><div class="artist-avatar" style="background:'+at.c+';width:56px;height:56px;font-size:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">'+esc(name)[0]+'</div><div><h2 style="font-size:22px;font-weight:600">'+esc(name)+'</h2><span class="sub">'+esc(bio)+'</span></div></div></div>';
+  var h='<div class="section-header" style="margin-bottom:16px;padding:24px;border-radius:var(--radius);background:linear-gradient(135deg,'+at.c+'22,'+at.c+'0a)"><div style="display:flex;align-items:center;gap:16px"><div class="artist-avatar" style="background:'+at.c+';width:56px;height:56px;font-size:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">'+esc(name)[0]+'</div><div><h2 style="font-size:22px;font-weight:600">'+esc(name)+'</h2><span class="sub">'+esc(bio)+'</span></div></div></div>';
   h+='<div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" onclick="M(\'editArtist\',\''+at.id+'\')">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="M(\'addAlbum\')">+ 新建画集</button><button class="btn btn-outline btn-sm" onclick="M(\'uploadArtwork\')">📸 上传作品</button></div>';
   if(al.length===0){
     h+='<div class="empty-state"><div class="icon">📚</div><h3>还没有画集</h3><p>为小画家创建第一个画集吧</p></div>';
