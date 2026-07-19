@@ -10,7 +10,7 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libvips libwebp-dev && rm -rf /var/lib/apt/lists/*
+    libvips libwebp-dev libheif-dev && rm -rf /var/lib/apt/lists/*
 COPY server/package.json ./
 RUN npm install --production
 COPY --from=builder /app/dist ./dist
