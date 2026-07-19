@@ -59,8 +59,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url('data:image/
 .section-header h2{font-size:22px;font-weight:600;letter-spacing:-.3px}
 .section-header .sub{color:var(--text-secondary);font-size:14px;font-weight:400}
 .artist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:40px}
-.artist-card{background:var(--surface);border-radius:var(--radius);padding:24px 16px;text-align:center;box-shadow:var(--shadow);cursor:pointer;transition:all .3s;border:2px solid transparent}
+.artist-card{background:var(--surface);border-radius:var(--radius);padding:0;text-align:center;box-shadow:var(--shadow);cursor:pointer;transition:all .3s;border:2px solid transparent;overflow:hidden}
 .artist-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.08);border-color:var(--primary-light)}
+.artist-card-cover{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:48px;color:#fff;overflow:hidden}
+.artist-card-cover img{width:100%;height:100%;object-fit:cover}
+.artist-card-info{padding:16px}
 .artist-avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:#fff}
 .artist-name{font-size:16px;font-weight:600;margin-bottom:4px}
 .artist-count{font-size:13px;color:var(--text-secondary)}
@@ -310,7 +313,13 @@ function home(){
   as.forEach(function(a){
     var ac=D.b.filter(function(b){return b.aid===a.id||b.artist_id===a.id}).length;
     var wc=D.w.filter(function(w){return w.aid===a.id||w.artist_id===a.id}).length;
-    h+='<div class="artist-card" onclick="nav(\'artist\',\''+a.id+'\')"><div class="artist-avatar" style="background:'+a.c+'">'+esc(a.n||a.name)[0]+'</div><div class="artist-name">'+esc(a.n||a.name)+'</div><div class="artist-count">'+ac+' 个画集 · '+wc+' 幅作品</div></div>';
+    var firstW=D.w.filter(function(w){return (w.aid||w.artist_id)===a.id}).sort(function(x,y){return (y.created_at||'').localeCompare(x.created_at||'');})[0];
+    var cover=firstW?imgUrl(firstW.compressed_file||firstW.i):null;
+    h+='<div class="artist-card" onclick="nav(\'artist\',\''+a.id+'\')">';
+    h+='<div class="artist-card-cover" style="background:'+a.c+'">';
+    h+=cover?'<img src="'+cover+'" alt="'+esc(a.n||a.name)+'" loading="lazy">':'🎨';
+    h+='</div>';
+    h+='<div class="artist-card-info"><div class="artist-name">'+esc(a.n||a.name)+'</div><div class="artist-count">'+ac+' 个画集 · '+wc+' 幅作品</div></div></div>';
   });
   h+='</div>';return h;
 }
