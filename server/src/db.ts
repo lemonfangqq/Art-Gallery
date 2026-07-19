@@ -7,11 +7,12 @@ if (!DATABASE_URL) {
 }
 
 // ─── Pool ───
-// Fix: Render Docker doesn't support IPv6, force IPv4
+// Supabase port 5432 uses IPv6 which Render doesn't support.
+// Use port 6543 (connection pooler) which uses IPv4.
+const fixedUrl = DATABASE_URL.replace(/:5432\//, ':6543/');
 export const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Supabase requires SSL
-  family: 4, // Force IPv4 to avoid ENETUNREACH on Render
+  connectionString: fixedUrl,
+  ssl: { rejectUnauthorized: false },
 });
 
 // ─── Schema ───
