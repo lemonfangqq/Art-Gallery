@@ -1,14 +1,13 @@
 import { Pool } from 'pg';
+import dns from 'dns';
 
-// ─── Config ───
+dns.setDefaultResultOrder('ipv4first');
+
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
   throw new Error('DATABASE_URL is not set. Please configure it in Render environment variables.');
 }
 
-// ─── Pool ───
-// Supabase port 5432 uses IPv6 which Render doesn't support.
-// Use port 6543 (connection pooler) which uses IPv4.
 const fixedUrl = DATABASE_URL.replace(/:5432\//, ':6543/');
 export const pool = new Pool({
   connectionString: fixedUrl,
