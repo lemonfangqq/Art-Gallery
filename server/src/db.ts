@@ -1,7 +1,4 @@
 import { Pool } from 'pg';
-import dns from 'dns';
-
-dns.setDefaultResultOrder('ipv4first');
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
