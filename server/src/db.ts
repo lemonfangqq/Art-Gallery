@@ -29,7 +29,7 @@ const SCHEMA = `
     id TEXT PRIMARY KEY,
     artist_id TEXT NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    desc TEXT DEFAULT '',
+    "desc" TEXT DEFAULT '',
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS artworks (

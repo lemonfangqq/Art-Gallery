@@ -132,7 +132,7 @@ app.post('/api/albums', async (req, res) => {
   if (!artistId || !name?.trim()) return res.status(400).json({ error: 'Artist and name required' });
   const id = uid();
   await pool.query(
-    'INSERT INTO albums (id, artist_id, name, desc, created_at) VALUES ($1,$2,$3,$4,$5)',
+    'INSERT INTO albums (id, artist_id, name, "desc", created_at) VALUES ($1,$2,$3,$4,$5)',
     [id, artistId, name.trim(), (desc || '').trim(), now()]
   );
   const { rows } = await pool.query('SELECT * FROM albums WHERE id = $1', [id]);
@@ -145,7 +145,7 @@ app.put('/api/albums/:id', async (req, res) => {
   if (!existingRows[0]) return res.status(404).json({ error: 'Not found' });
   const existing = existingRows[0];
   await pool.query(
-    'UPDATE albums SET name=$1, desc=$2 WHERE id=$3',
+    'UPDATE albums SET name=$1, "desc"=$2 WHERE id=$3',
     [
       (name || existing.name).trim(),
       desc !== undefined ? desc.trim() : existing.desc,
@@ -276,7 +276,7 @@ app.post('/api/migrate', async (req, res) => {
     }
     for (const b of (data.b || [])) {
       await client.query(
-        'INSERT INTO albums (id, artist_id, name, desc, created_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',
+        'INSERT INTO albums (id, artist_id, name, "desc", created_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',
         [b.id, b.aid, b.n, b.desc || '', b.at || now()]
       );
     }
