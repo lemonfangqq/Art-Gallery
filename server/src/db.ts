@@ -5,9 +5,8 @@ if (!DATABASE_URL) {
   throw new Error('DATABASE_URL is not set. Please configure it in Render environment variables.');
 }
 
-const fixedUrl = DATABASE_URL.replace(/:5432\//, ':6543/');
 export const pool = new Pool({
-  connectionString: fixedUrl,
+  connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
