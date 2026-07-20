@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // ─── Config ───
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -51,4 +52,24 @@ export async function deleteFromR2(urlOrKey: string): Promise<void> {
   } catch (err) {
     console.warn(`R2 delete failed for ${key}:`, err);
   }
+}
+
+/**
+ * Generate a temporary signed URL (valid 1 hour) for private R2 objects.
+ * Used so the bucket can stay non-public while the browser still loads images.
+ */
+export async function signR2Url(key: string): Promise<string> {
+  if (!R2_BUCKET) throw new Error('R2 not configured');
+  const cmd = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  return getSignedUrl(r2, cmd, { expiresIn: 3600 });
+}
+
+/**
+ * Extract the R2 object key from a stored URL (public or signed).
+ * Handles: https://pub-xxx.r2.dev/key, https://<bucket>.r2.cloudflarestorage.com/key
+ */
+export function r2KeyFromUrl(url: string): string | null {
+  if (!url) return null;
+  const m = url.match(/\/(compressed_[^/?]+|original_[^/?]+)(?:\?|$)/);
+  return m ? m[1] : null;
 }

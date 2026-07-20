@@ -3,7 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
 import { pool, initDb } from './db';
-import { uploadToR2, deleteFromR2 } from './r2';
+import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
 // ─── Config ───
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -188,6 +188,21 @@ app.get('/api/artworks', async (req, res) => {
     result = await pool.query('SELECT * FROM artworks ORDER BY created_at DESC');
   }
   res.json(result.rows);
+});
+
+// Serve R2 images via temporary signed URLs (bucket stays private)
+app.get('/api/artworks/:id/image', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT compressed_file, original_file FROM artworks WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    const key = r2KeyFromUrl(rows[0].compressed_file);
+    if (!key) return res.status(404).json({ error: 'Not an R2 object' });
+    const url = await signR2Url(key);
+    res.redirect(url);
+  } catch (err: any) {
+    console.error('Signed URL error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/artworks', upload.single('image'), async (req, res) => {
