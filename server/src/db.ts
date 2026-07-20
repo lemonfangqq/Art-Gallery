@@ -1,9 +1,15 @@
 import { Pool } from 'pg';
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
+const rawUrl = process.env.DATABASE_URL;
+if (!rawUrl) {
   throw new Error('DATABASE_URL is not set. Please configure it in Render environment variables.');
 }
+
+// Supabase direct host (db.*.supabase.co) resolves to IPv6 only, which Render
+// cannot route. Rewrite to the Transaction-pooler host (IPv4) when detected.
+const DATABASE_URL = rawUrl
+  .replace(/^postgresql:\/\//, 'postgresql://')
+  .replace(/@db\.([a-z0-9]+)\.supabase\.co:5432\//, '@aws-0-ap-northeast-1.pooler.supabase.com:6543/');
 
 export const pool = new Pool({
   connectionString: DATABASE_URL,
