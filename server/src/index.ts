@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
+import heicConvert from 'heic-convert';
 import { pool, initDb } from './db';
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
@@ -218,8 +219,15 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     const compressedKey = `compressed_${id}.jpg`;
     const originalKey = `original_${id}.${ext}`;
 
+    // Convert HEIF/HEIC to JPEG buffer (sharp can't decode HEIF without proper plugin)
+    let imageBuffer = file.buffer;
+    if (ext === 'heic' || ext === 'heif') {
+      const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
+      imageBuffer = jpegBuf;
+    }
+
     // Compress with sharp (max 1200px, JPEG quality 85)
-    const compressed = await sharp(file.buffer)
+    const compressed = await sharp(imageBuffer)
       .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
