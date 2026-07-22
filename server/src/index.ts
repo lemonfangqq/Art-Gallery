@@ -218,12 +218,20 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     const id = uid();
     const compressedKey = `compressed_${id}.jpg`;
     const originalKey = `original_${id}.${ext}`;
+    console.log(`[Upload] ext=${ext} size=${file.size} name=${file.originalname}`);
 
     // Convert HEIF/HEIC to JPEG buffer (sharp can't decode HEIF without proper plugin)
     let imageBuffer = file.buffer;
     if (ext === 'heic' || ext === 'heif') {
-      const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
-      imageBuffer = jpegBuf;
+      try {
+        console.log(`[HEIF] Converting ${ext} file, size=${file.buffer.length} bytes`);
+        const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
+        imageBuffer = jpegBuf;
+        console.log(`[HEIF] Converted OK, output=${jpegBuf.length} bytes`);
+      } catch (heicErr: any) {
+        console.error('[HEIF] Conversion failed:', heicErr.message || heicErr);
+        throw new Error(`HEIF conversion failed: ${heicErr.message || 'unknown error'}`);
+      }
     }
 
     // Compress with sharp (max 1200px, JPEG quality 85)
