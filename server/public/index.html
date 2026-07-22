@@ -134,6 +134,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url('data:image/
   .feature-bar{padding:10px 16px;gap:4px}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -721,23 +722,9 @@ function RUP(){
   }).join('');
 }
 
-function heicToJpeg(file){
-  return new Promise(function(resolve,reject){
-    var url=URL.createObjectURL(file);
-    var img=new Image();
-    img.onload=function(){
-      var c=document.createElement('canvas');
-      c.width=img.naturalWidth;
-      c.height=img.naturalHeight;
-      c.getContext('2d').drawImage(img,0,0);
-      URL.revokeObjectURL(url);
-      c.toBlob(function(blob){
-        resolve(new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
-      },'image/jpeg',0.85);
-    };
-    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Failed to decode HEIF'));};
-    img.src=url;
-  });
+async function heicToJpeg(file){
+  var blob=await heic2any({blob:file,toType:'image/jpeg',quality:0.85});
+  return new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
 }
 
 // ═══════════════════════════════════════
