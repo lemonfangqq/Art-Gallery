@@ -257,8 +257,8 @@ function R(){
   var el=document.getElementById('breadcrumb');
   if(!el)return;
   var c=[{l:'🏠 首页',a:'home'}];
-  if(S.aid){var at=D.a.find(function(x){return x.id===S.aid});if(at)c.push({l:at.n,a:'artist',id:at.id});}
-  if(S.bid){var al=D.b.find(function(x){return x.id===S.bid});if(al)c.push({l:al.n,a:'album',id:al.id});}
+  if(S.aid){var at=D.a.find(function(x){return x.id===S.aid});if(at)c.push({l:at.n||at.name,a:'artist',id:at.id});}
+  if(S.bid){var al=D.b.find(function(x){return x.id===S.bid});if(al)c.push({l:al.n||al.name,a:'album',id:al.id});}
   el.innerHTML=c.map(function(x,i){
     var sep=i>0?' <span class="sep">▸</span> ':'';
     if(i===c.length-1)return sep+'<span class="current">'+esc(x.l)+'</span>';
@@ -269,11 +269,11 @@ function R(){
   var fb=document.getElementById('featureBar');
   if(fb){
     var tags=[];
-    if(S.v==='home')tags.push('👤 小画家管理','🖼️ 画集管理','📸 作品上传','✨ 作品展示');
-    else if(S.v==='artist')tags.push('👤 小画家信息','🖼️ 画集管理','📸 上传作品','✨ 浏览作品');
-    else if(S.v==='album')tags.push('🖼️ 画集信息','📸 上传作品','✨ 作品展示');
-    else if(S.v==='artwork')tags.push('✨ 作品详情','✏️ 编辑作品','🗑️ 删除作品');
-    fb.innerHTML=tags.map(function(t){return '<span class="feature-tag active"><span class="icon">'+t.slice(0,2)+'</span>'+t.slice(2)+'</span>';}).join('');
+    if(S.v==='home')tags=[{l:'👤 小画家管理',a:'home'},{l:'🖼️ 画集管理',a:'home'},{l:'📸 作品上传',a:'home'},{l:'✨ 作品展示',a:'home'}];
+    else if(S.v==='artist')tags=[{l:'👤 小画家信息',a:'artist',id:S.aid},{l:'🖼️ 画集管理',a:'artist',id:S.aid},{l:'📸 上传作品',a:'modal',m:'uploadArtwork'},{l:'✨ 浏览作品',a:'artist',id:S.aid}];
+    else if(S.v==='album')tags=[{l:'🖼️ 画集信息',a:'album',id:S.bid},{l:'📸 上传作品',a:'modal',m:'uploadArtwork'},{l:'✨ 作品展示',a:'album',id:S.bid}];
+    else if(S.v==='artwork')tags=[{l:'✨ 作品详情',a:'artwork',id:S.wid},{l:'✏️ 编辑作品',a:'modal',m:'editArtwork'},{l:'🗑️ 删除作品',a:'modal',m:'deleteArtwork'}];
+    fb.innerHTML=tags.map(function(t){var click='';if(t.a==='modal')click=' onclick="M(\''+t.m+'\')"';else click=' onclick="nav(\''+t.a+'\',\''+(t.id||'')+'\')"';return '<span class="feature-tag" style="cursor:pointer"'+click+'><span class="icon">'+t.l.slice(0,2)+'</span>'+t.l.slice(2)+'</span>';}).join('');
   }
 
   // Header actions
