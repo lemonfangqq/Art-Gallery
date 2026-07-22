@@ -235,16 +235,32 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     }
 
     // Compress with sharp (max 1200px, JPEG quality 85)
-    const compressed = await sharp(imageBuffer)
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    let compressed;
+    try {
+      console.log(`[Sharp] Compressing ${imageBuffer.length} bytes buffer`);
+      compressed = await sharp(imageBuffer)
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      console.log(`[Sharp] Compressed OK, output=${compressed.length} bytes`);
+    } catch (sharpErr: any) {
+      console.error('[Sharp] Compression failed:', sharpErr.message || sharpErr);
+      throw new Error(`Image compression failed: ${sharpErr.message || 'unknown error'}`);
+    }
 
     // Upload both to R2
-    const [compressedUrl, originalUrl] = await Promise.all([
-      uploadToR2(compressedKey, compressed, 'image/jpeg'),
-      uploadToR2(originalKey, file.buffer, file.mimetype || 'image/jpeg'),
-    ]);
+    let compressedUrl, originalUrl;
+    try {
+      console.log(`[R2] Uploading compressed=${compressed.length} bytes, original=${file.buffer.length} bytes`);
+      [compressedUrl, originalUrl] = await Promise.all([
+        uploadToR2(compressedKey, compressed, 'image/jpeg'),
+        uploadToR2(originalKey, file.buffer, file.mimetype || 'image/jpeg'),
+      ]);
+      console.log(`[R2] Upload OK`);
+    } catch (r2Err: any) {
+      console.error('[R2] Upload failed:', r2Err.message || r2Err);
+      throw new Error(`R2 upload failed: ${r2Err.message || 'unknown error'}`);
+    }
 
     await pool.query(
       'INSERT INTO artworks (id, album_id, artist_id, title, description, date, compressed_file, original_file, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
