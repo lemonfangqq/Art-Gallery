@@ -238,7 +238,7 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     let compressed;
     try {
       console.log(`[Sharp] Compressing ${imageBuffer.length} bytes buffer`);
-      compressed = await sharp(imageBuffer)
+      compressed = await sharp(imageBuffer, { sequentialRead: true })
         .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
