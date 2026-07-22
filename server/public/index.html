@@ -669,7 +669,12 @@ function AME(){
         fd.append('description',document.getElementById('fWD').value.trim());
         for(var i=0;i<UI.length;i++){
           var file=UI[i];
-          if(file instanceof File)fd.append('image',file);
+          if(file instanceof File){
+            if(file.name.match(/\.(heic|heif)$/i)){
+              file=await heicToJpeg(file);
+            }
+            fd.append('image',file);
+          }
         }
         var artwork=await api('POST','/artworks',fd);
         D.w.push(artwork);
@@ -714,6 +719,25 @@ function RUP(){
     var url=URL.createObjectURL(img);
     return '<div style="position:relative;display:inline-block"><img src="'+url+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="UI.splice('+i+',1);RUP();" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
   }).join('');
+}
+
+function heicToJpeg(file){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');
+      c.width=img.naturalWidth;
+      c.height=img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(blob){
+        resolve(new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'}));
+      },'image/jpeg',0.85);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Failed to decode HEIF'));};
+    img.src=url;
+  });
 }
 
 // ═══════════════════════════════════════
