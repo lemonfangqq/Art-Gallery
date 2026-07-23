@@ -696,9 +696,10 @@ function AME(){
 }
 
 // ═══════════════════════════════════════
-// FILE HANDLING
+// FILE HANDLING — converts HEIC/HEIF to JPEG in-browser before upload
+// so the server never sees a HEIC file (server doesn't support HEIC).
 // ═══════════════════════════════════════
-// Detect HEIC/HEIF by name (MIME is unreliable for HEIC)
+
 function isHeicFile(file){
   return /\.(heic|heif)$/i.test(file.name);
 }
@@ -709,54 +710,93 @@ function HF(files){
     if(!file.type.startsWith('image/')&&!isHeicFile(file))return;
     if(isHeicFile(file)){
       pending.push(file);
+      // Show placeholder immediately
+      UI.push('🔄 正在转换 HEIC…');
     } else {
       UI.push(file);
     }
   });
   RUP();
-  // Convert HEIC files after adding the visible ones
   if(pending.length>0){
     convertHeicBatch(pending);
   }
 }
 
-function convertHeicBatch(files){
-  // Load heic2any dynamically from CDN
+var _heic2anyLoaded=false;
+function ensureHeic2any(cb){
+  if(typeof heic2any!=='undefined'){_heic2anyLoaded=true;cb();return;}
+  if(_heic2anyLoaded){cb();return;}
   var s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-  s.onload=function(){ runHeicConvert(files); };
+  s.onload=function(){_heic2anyLoaded=true;cb();};
   s.onerror=function(){
-    console.warn('heic2any CDN failed, trying local fallback');
-    runHeicConvert(files);
+    console.warn('heic2any CDN failed, trying canvas fallback');
+    _heic2anyLoaded=false;
+    cb(); // will try canvas approach in runHeicConvert
   };
   document.head.appendChild(s);
 }
 
+function convertHeicBatch(files){
+  ensureHeic2any(function(){ runHeicConvert(files); });
+}
+
+function tryCanvasHeic(file, cb){
+  // Some browsers (Safari, Chrome on iOS/macOS) can natively decode HEIC in <img>
+  var url=URL.createObjectURL(file);
+  var img=new Image();
+  img.onload=function(){
+    var c=document.createElement('canvas');
+    c.width=Math.min(img.width,1200);
+    c.height=Math.min(img.height,1200);
+    var ctx=c.getContext('2d');
+    ctx.drawImage(img,0,0,c.width,c.height);
+    c.toBlob(function(blob){
+      if(blob){
+        var jf=new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
+        cb(null,jf);
+      } else {
+        cb('canvas.toBlob returned null',null);
+      }
+      URL.revokeObjectURL(url);
+    },'image/jpeg',0.85);
+  };
+  img.onerror=function(){
+    URL.revokeObjectURL(url);
+    cb('browser cannot decode this HEIC',null);
+  };
+  img.src=url;
+}
+
 function runHeicConvert(files){
   var idx=0;
+  // Remove any pending '🔄 正在转换 HEIC…' placeholders from UI
+  UI=UI.filter(function(x){return typeof x!=='string'||!x.includes('HEIC');});
   function next(){
     if(idx>=files.length){RUP();return;}
     var file=files[idx++];
-    // Show placeholder immediately
-    UI.push('⏳ 正在转换 HEIC…');
-    RUP();
-    // Remove placeholder before final insert
-    UI.pop();
-    try {
-      heic2any({blob:file,toType:'image/jpeg',quality:0.85}).then(function(resultBlob){
-        var jpegFile=new File([resultBlob], file.name.replace(/\.(heic|heif)$/i,'.jpg'), {type:'image/jpeg'});
-        UI.push(jpegFile);
+    var done=function(err,jpegFile){
+      if(err){
+        alert('HEIC 转换失败 ('+err+')。请先用其他工具把这张图转成 JPEG 再上传。');
         next();
-      }).catch(function(err){
-        console.warn('heic2any failed for',file.name,err);
-        // Still push original so server tries fallback
-        UI.push(file);
-        next();
-      });
-    } catch(e) {
-      console.warn('heic2any error:',e);
-      UI.push(file);
+        return;
+      }
+      UI.push(jpegFile);
+      RUP();
       next();
+    };
+    if(typeof heic2any!=='undefined'){
+      heic2any({blob:file,toType:'image/jpeg',quality:0.85})
+        .then(function(resultBlob){
+          var jf=new File([resultBlob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
+          done(null,jf);
+        })
+        .catch(function(err){
+          console.warn('heic2any failed:',err);
+          tryCanvasHeic(file,done);
+        });
+    } else {
+      tryCanvasHeic(file,done);
     }
   }
   next();
@@ -766,7 +806,10 @@ function RUP(){
   var up=document.getElementById('fUP');
   if(!up)return;
   up.innerHTML=UI.map(function(img,i){
-    if(typeof img==='string')return '<div style="position:relative;display:inline-block"><img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"></div>';
+    if(typeof img==='string'){
+      if(img.includes('HEIC'))return '<div class="type-body-01" style="padding:8px;color:var(--text-secondary)">⏳ 正在转换 HEIC…</div>';
+      return '<div style="position:relative;display:inline-block"><img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"></div>';
+    }
     var url=URL.createObjectURL(img);
     return '<div style="position:relative;display:inline-block"><img src="'+url+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="UI.splice('+i+',1);RUP();" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
   }).join('');
