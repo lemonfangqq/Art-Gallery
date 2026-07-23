@@ -3,7 +3,6 @@ import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
 import { pool, initDb } from './db';
-// heic-convert imported dynamically in the HEIF fallback handler
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
 // ─── Config ───
@@ -220,41 +219,23 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     const originalKey = `original_${id}.${ext}`;
     console.log(`[Upload] ext=${ext} size=${file.size} name=${file.originalname}`);
 
-    // Try sharp first (needs system libheif plugins on Render), fall back to heic-convert WASM
+    // HEIC/HEIF: system libheif on Render can't decode these (no HEVC plugin).
+    // Client-side heic2any (in public/index.html) converts HEIC→JPEG before upload,
+    // so the server normally never sees a HEIC file. If one arrives via curl/API,
+    // give a clear error instead of crashing the process.
     let compressed: Buffer;
     let originalBuffer: Buffer;
     const isHeif = ext === 'heic' || ext === 'heif';
     if (isHeif) {
-      try {
-        console.log(`[Sharp] Trying system libheif for ${ext} file...`);
-        compressed = await sharp(file.buffer, { sequentialRead: true })
-          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85 })
-          .toBuffer();
-        originalBuffer = file.buffer;
-        console.log(`[Sharp] HEIF decoded OK via system, compressed=${compressed.length} bytes`);
-      } catch (sharpErr: any) {
-        console.log(`[Sharp] System libheif failed (${sharpErr.message}), falling back to heic-convert WASM`);
-        try {
-          const { default: heicConvert } = await import('heic-convert');
-          const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
-          compressed = jpegBuf;
-          originalBuffer = jpegBuf;
-          console.log(`[HEIF] Converted OK via WASM, output=${jpegBuf.length} bytes`);
-        } catch (heicErr: any) {
-          console.error(`[HEIF] WASM conversion also failed: ${heicErr.message}`);
-          throw new Error(`HEIF decode failed: system libheif lacks HEVC plugin, heic-convert WASM also failed. Try converting to JPEG before uploading.`);
-        }
-      }
-    } else {
-      originalBuffer = file.buffer;
-      console.log(`[Sharp] Compressing ${file.buffer.length} bytes buffer`);
-      compressed = await sharp(file.buffer, { sequentialRead: true })
-        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toBuffer();
-      console.log(`[Sharp] Compressed OK, output=${compressed.length} bytes`);
+      throw new Error('HEIC/HEIF not supported server-side. Convert to JPEG before uploading, or use the web interface which converts automatically.');
     }
+    originalBuffer = file.buffer;
+    console.log(`[Sharp] Compressing ${file.buffer.length} bytes buffer`);
+    compressed = await sharp(file.buffer, { sequentialRead: true })
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    console.log(`[Sharp] Compressed OK, output=${compressed.length} bytes`);
 
     // Upload both to R2
     let compressedUrl, originalUrl;
