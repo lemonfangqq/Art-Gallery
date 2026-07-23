@@ -12,6 +12,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libvips42 \
     libheif1 libheif-dev \
+    libheif-plugin-libde265 libheif-plugin-x265 \
     libde265-0 \
     libx265-199 \
     libwebp7 \
