@@ -698,12 +698,68 @@ function AME(){
 // ═══════════════════════════════════════
 // FILE HANDLING
 // ═══════════════════════════════════════
+// Detect HEIC/HEIF by name (MIME is unreliable for HEIC)
+function isHeicFile(file){
+  return /\.(heic|heif)$/i.test(file.name);
+}
+
 function HF(files){
+  var pending=[];
   Array.from(files).forEach(function(file){
-    if(!file.type.startsWith('image/'))return;
-    UI.push(file);
-    RUP();
+    if(!file.type.startsWith('image/')&&!isHeicFile(file))return;
+    if(isHeicFile(file)){
+      pending.push(file);
+    } else {
+      UI.push(file);
+    }
   });
+  RUP();
+  // Convert HEIC files after adding the visible ones
+  if(pending.length>0){
+    convertHeicBatch(pending);
+  }
+}
+
+function convertHeicBatch(files){
+  // Load heic2any dynamically from CDN
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+  s.onload=function(){ runHeicConvert(files); };
+  s.onerror=function(){
+    console.warn('heic2any CDN failed, trying local fallback');
+    runHeicConvert(files);
+  };
+  document.head.appendChild(s);
+}
+
+function runHeicConvert(files){
+  var idx=0;
+  function next(){
+    if(idx>=files.length){RUP();return;}
+    var file=files[idx++];
+    // Show placeholder immediately
+    UI.push('⏳ 正在转换 HEIC…');
+    RUP();
+    // Remove placeholder before final insert
+    UI.pop();
+    try {
+      heic2any({blob:file,toType:'image/jpeg',quality:0.85}).then(function(resultBlob){
+        var jpegFile=new File([resultBlob], file.name.replace(/\.(heic|heif)$/i,'.jpg'), {type:'image/jpeg'});
+        UI.push(jpegFile);
+        next();
+      }).catch(function(err){
+        console.warn('heic2any failed for',file.name,err);
+        // Still push original so server tries fallback
+        UI.push(file);
+        next();
+      });
+    } catch(e) {
+      console.warn('heic2any error:',e);
+      UI.push(file);
+      next();
+    }
+  }
+  next();
 }
 
 function RUP(){

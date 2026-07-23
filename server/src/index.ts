@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
-import heicConvert from 'heic-convert';
 import { pool, initDb } from './db';
+// heic-convert imported dynamically in the HEIF fallback handler
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
 // ─── Config ───
@@ -233,12 +233,18 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
           .toBuffer();
         originalBuffer = file.buffer;
         console.log(`[Sharp] HEIF decoded OK via system, compressed=${compressed.length} bytes`);
-      } catch {
-        console.log(`[Sharp] System libheif failed, falling back to heic-convert WASM`);
-        const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
-        compressed = jpegBuf;
-        originalBuffer = jpegBuf;
-        console.log(`[HEIF] Converted OK via WASM, output=${jpegBuf.length} bytes`);
+      } catch (sharpErr: any) {
+        console.log(`[Sharp] System libheif failed (${sharpErr.message}), falling back to heic-convert WASM`);
+        try {
+          const { default: heicConvert } = await import('heic-convert');
+          const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
+          compressed = jpegBuf;
+          originalBuffer = jpegBuf;
+          console.log(`[HEIF] Converted OK via WASM, output=${jpegBuf.length} bytes`);
+        } catch (heicErr: any) {
+          console.error(`[HEIF] WASM conversion also failed: ${heicErr.message}`);
+          throw new Error(`HEIF decode failed: system libheif lacks HEVC plugin, heic-convert WASM also failed. Try converting to JPEG before uploading.`);
+        }
       }
     } else {
       originalBuffer = file.buffer;
