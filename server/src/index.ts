@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
+import heicConvert from 'heic-convert';
 import { pool, initDb } from './db';
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
@@ -219,21 +220,43 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     const originalKey = `original_${id}.${ext}`;
     console.log(`[Upload] ext=${ext} size=${file.size} name=${file.originalname}`);
 
-    // sharp handles HEIF/HEIC natively when system libheif plugins are present
-    console.log(`[Sharp] Processing ${file.buffer.length} bytes buffer`);
-    const compressed = await sharp(file.buffer, { sequentialRead: true })
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-    console.log(`[Sharp] Compressed OK, output=${compressed.length} bytes`);
+    // Try sharp first (needs system libheif plugins on Render), fall back to heic-convert WASM
+    let compressed: Buffer;
+    let originalBuffer: Buffer;
+    const isHeif = ext === 'heic' || ext === 'heif';
+    if (isHeif) {
+      try {
+        console.log(`[Sharp] Trying system libheif for ${ext} file...`);
+        compressed = await sharp(file.buffer, { sequentialRead: true })
+          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        originalBuffer = file.buffer;
+        console.log(`[Sharp] HEIF decoded OK via system, compressed=${compressed.length} bytes`);
+      } catch {
+        console.log(`[Sharp] System libheif failed, falling back to heic-convert WASM`);
+        const jpegBuf = await heicConvert({ buffer: file.buffer, format: 'JPEG', quality: 0.85 });
+        compressed = jpegBuf;
+        originalBuffer = jpegBuf;
+        console.log(`[HEIF] Converted OK via WASM, output=${jpegBuf.length} bytes`);
+      }
+    } else {
+      originalBuffer = file.buffer;
+      console.log(`[Sharp] Compressing ${file.buffer.length} bytes buffer`);
+      compressed = await sharp(file.buffer, { sequentialRead: true })
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      console.log(`[Sharp] Compressed OK, output=${compressed.length} bytes`);
+    }
 
     // Upload both to R2
     let compressedUrl, originalUrl;
     try {
-      console.log(`[R2] Uploading compressed=${compressed.length} bytes, original=${file.buffer.length} bytes`);
+      console.log(`[R2] Uploading compressed=${compressed.length} bytes, original=${originalBuffer.length} bytes`);
       [compressedUrl, originalUrl] = await Promise.all([
         uploadToR2(compressedKey, compressed, 'image/jpeg'),
-        uploadToR2(originalKey, file.buffer, file.mimetype || 'image/jpeg'),
+        uploadToR2(originalKey, originalBuffer, 'image/jpeg'),
       ]);
       console.log(`[R2] Upload OK`);
     } catch (r2Err: any) {
