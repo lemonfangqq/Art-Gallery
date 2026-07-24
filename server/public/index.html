@@ -201,10 +201,13 @@ function isHeic(w) {
 async function loadHeicDisp(id) {
   if (heicCache[id]) return heicCache[id];
   try {
+    // Ensure heic2any CDN is loaded (used for upload too, may not be loaded yet)
+    if (typeof heic2any === 'undefined') {
+      await new Promise(function(resolve) { ensureHeic2any(resolve); });
+    }
+    if (typeof heic2any === 'undefined') return null;
     var r = await fetch('/api/artworks/' + id + '/image');
     var b = await r.blob();
-    if (typeof heic2any === 'undefined') return null;
-    // heic2any returns Blop|Blop[]
     var j = await heic2any({ blob: b, toType: 'image/jpeg' });
     var jb = Array.isArray(j) ? j[0] : j;
     var u = URL.createObjectURL(jb);
