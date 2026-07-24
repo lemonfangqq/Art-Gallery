@@ -188,6 +188,35 @@ function origUrl(artwork) {
 }
 
 // ═══════════════════════════════════════
+// HEIC DISPLAY HELPERS
+// ═══════════════════════════════════════
+var HEIC_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+var heicCache = {};
+
+function isHeic(w) {
+  var u = w.compressed_file || w.i || '';
+  return /\.(heic|heif)$/i.test(u);
+}
+
+async function loadHeicDisp(id) {
+  if (heicCache[id]) return heicCache[id];
+  try {
+    var r = await fetch('/api/artworks/' + id + '/image');
+    var b = await r.blob();
+    if (typeof heic2any === 'undefined') return null;
+    // heic2any returns Blop|Blop[]
+    var j = await heic2any({ blob: b, toType: 'image/jpeg' });
+    var jb = Array.isArray(j) ? j[0] : j;
+    var u = URL.createObjectURL(jb);
+    heicCache[id] = u;
+    return u;
+  } catch(e) {
+    console.warn('HEIC display conv failed:', id, e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════
 // API CLIENT
 // ═══════════════════════════════════════
 async function api(method, path, body) {
@@ -323,9 +352,10 @@ function home(){
     var wc=D.w.filter(function(w){return w.aid===a.id||w.artist_id===a.id}).length;
     var firstW=D.w.filter(function(w){return (w.aid||w.artist_id)===a.id}).sort(function(x,y){return (y.created_at||'').localeCompare(x.created_at||'');})[0];
     var cover=firstW?imgUrl(firstW.compressed_file||firstW.i):null;
+    var heicCover=firstW?isHeic(firstW):false;
     h+='<div class="artist-card" onclick="nav(\'artist\',\''+a.id+'\')">';
     h+='<div class="artist-card-cover" style="background:'+a.c+';color:'+txc(a.c)+'">';
-    h+=cover?'<img src="'+cover+'" alt="'+esc(a.n||a.name)+'" loading="lazy">':'🎨';
+    h+=cover?'<img src="'+(heicCover?HEIC_PIXEL:cover)+'" alt="'+esc(a.n||a.name)+'" loading="lazy"'+(heicCover?' class="heic-img" data-heic-id="'+firstW.id+'"':'')+'>':'🎨';
     h+='</div>';
     h+='<div class="artist-card-info"><div class="artist-name">'+esc(a.n||a.name)+'</div><div class="artist-count">'+ac+' 个画集 · '+wc+' 幅作品</div></div></div>';
   });
@@ -346,9 +376,11 @@ function artist(){
     h+='<div class="section-header"><h2>画集 <span class="sub">('+al.length+')</span></h2></div><div class="album-grid">';
     al.forEach(function(al2){
       var ws=D.w.filter(function(w){return (w.bid||w.album_id)===al2.id});
-      var cv=ws.length>0?imgUrl(ws[0].compressed_file||ws[0].i):null;
+      var fw2=ws[0];
+      var cv=fw2?imgUrl(fw2.compressed_file||fw2.i):null;
+      var heicCv=fw2?isHeic(fw2):false;
       var desc=al2.desc||al2.desc||'';
-      h+='<div class="album-card" onclick="nav(\'album\',\''+al2.id+'\')"><div class="album-cover">'+(cv?'<img src="'+cv+'" alt="'+esc(al2.n||al2.name)+'">':'🎨')+'</div><div class="album-info"><h3>'+esc(al2.n||al2.name)+'</h3><p>'+esc(desc)+' · '+ws.length+' 幅作品</p></div></div>';
+      h+='<div class="album-card" onclick="nav(\'album\',\''+al2.id+'\')"><div class="album-cover">'+(cv?'<img src="'+(heicCv?HEIC_PIXEL:cv)+'" alt="'+esc(al2.n||al2.name)+'"'+(heicCv?' class="heic-img" data-heic-id="'+fw2.id+'"':'')+'>':'🎨')+'</div><div class="album-info"><h3>'+esc(al2.n||al2.name)+'</h3><p>'+esc(desc)+' · '+ws.length+' 幅作品</p></div></div>';
     });
     h+='</div>';
   }
@@ -366,7 +398,8 @@ function album(){
   }else{
     h+='<div class="artwork-grid">';
     ws.forEach(function(w){
-      h+='<div class="artwork-card" onclick="nav(\'artwork\',\''+w.id+'\')"><div class="artwork-img"><img src="'+imgUrl(w.compressed_file||w.i)+'" alt="'+esc(w.t||w.title)+'" loading="lazy"></div><div class="artwork-info"><h3>'+esc(w.t||w.title)+'</h3><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<div class="desc">'+esc(w.desc||w.description)+'</div>':'')+'</div></div>';
+      var heicW=isHeic(w);
+      h+='<div class="artwork-card" onclick="nav(\'artwork\',\''+w.id+'\')"><div class="artwork-img"><img src="'+(heicW?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" alt="'+esc(w.t||w.title)+'" loading="lazy"'+(heicW?' class="heic-img" data-heic-id="'+w.id+'"':'')+'></div><div class="artwork-info"><h3>'+esc(w.t||w.title)+'</h3><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<div class="desc">'+esc(w.desc||w.description)+'</div>':'')+'</div></div>';
     });
     h+='</div>';
   }
@@ -383,7 +416,7 @@ function detail(){
   var p=idx>0?ws[idx-1]:null;
   var n=idx<ws.length-1?ws[idx+1]:null;
   var h='<div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">';
-  h+='<div><div style="background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:zoom-in" onclick="OL(\''+w.id+'\')"><img src="'+imgUrl(w.compressed_file||w.i)+'" alt="'+esc(w.t||w.title)+'" style="width:100%;height:auto;display:block"></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:center">';
+  h+='<div><div style="background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:zoom-in" onclick="OL(\''+w.id+'\')"><img src="'+(isHeic(w)?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" alt="'+esc(w.t||w.title)+'" style="width:100%;height:auto;display:block"'+(isHeic(w)?' class="heic-img" data-heic-id="'+w.id+'"':'')+'></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:center">';
   if(p)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+p.id+'\')">◀ 上一幅</button>';
   if(n)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+n.id+'\')">下一幅 ▶</button>';
   h+='</div></div>';
@@ -465,7 +498,7 @@ function LB(){
   var h='<div class="lightbox-overlay" id="LBO"><button class="lightbox-close" onclick="LBX()">✕</button>';
   if(S.li>0)h+='<button class="lightbox-nav lightbox-prev" onclick="LBP()">◀</button>';
   if(S.li<ws.length-1)h+='<button class="lightbox-nav lightbox-next" onclick="LBN()">▶</button>';
-  h+='<div class="lightbox"><img src="'+imgUrl(w.compressed_file||w.i)+'" class="lightbox-img" alt="'+esc(w.t||w.title)+'"><div class="lightbox-info"><h2>'+esc(w.t||w.title)+'</h2><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<p style="font-size:14px;line-height:1.6;margin-top:8px">'+esc(w.desc||w.description)+'</p>':'')+'<div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">'+(S.li+1)+' / '+ws.length+'</div></div></div></div>';
+  h+='<div class="lightbox"><img src="'+(isHeic(w)?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" class="lightbox-img'+(isHeic(w)?' heic-img':'')+'" alt="'+esc(w.t||w.title)+'"'+(isHeic(w)?' data-heic-id="'+w.id+'"':'')+'><div class="lightbox-info"><h2>'+esc(w.t||w.title)+'</h2><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<p style="font-size:14px;line-height:1.6;margin-top:8px">'+esc(w.desc||w.description)+'</p>':'')+'<div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">'+(S.li+1)+' / '+ws.length+'</div></div></div></div>';
   document.getElementById('modalContainer').innerHTML=h;
   document.getElementById('LBO').addEventListener('click',function(e){if(e.target===e.currentTarget){S.li=-1;document.getElementById('modalContainer').innerHTML='';}});
   document.addEventListener('keydown',LKK);
@@ -825,6 +858,21 @@ function AI(){
       if(i.dataset.ai)return;i.dataset.ai='1';
       if(i.complete)i.classList.add('loaded');
       else i.addEventListener('load',function(){this.classList.add('loaded');});
+    });
+    // Convert HEIC images in-browser for cross-browser display
+    document.querySelectorAll('.heic-img').forEach(function(i){
+      var id=i.dataset.heicId;
+      if(!id||i.dataset.heicDone)return;
+      i.dataset.heicDone='1';
+      loadHeicDisp(id).then(function(u){
+        if(u){
+          i.src=u;
+          i.classList.add('loaded');
+        } else {
+          // Fallback: try serving the HEIC directly (works on Safari)
+          i.src='/api/artworks/'+id+'/image';
+        }
+      });
     });
   },100);
 }
