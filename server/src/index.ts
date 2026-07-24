@@ -221,6 +221,7 @@ app.get('/api/artworks/:id/image', async (req, res) => {
           const heicBuffer = Buffer.concat(chunks);
           const jpegBuffer = await sharp(heicBuffer).jpeg({ quality: 85 }).toBuffer();
           await uploadToR2(displayKey, jpegBuffer, 'image/jpeg');
+          displayExists = true;
           console.log(`[HEIC] Lazy convert OK`);
         } catch (convErr: any) {
           console.warn(`[HEIC] Lazy convert failed: ${convErr.message}`);
