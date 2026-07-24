@@ -9,12 +9,10 @@ RUN npm run build
 
 FROM node:20-slim AS runner
 WORKDIR /app
+# bookworm-backports: needed for libheif-plugin-libde265 (HEVC decoder)
 RUN echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get install -y --no-install-recommends -t bookworm-backports \
+    && apt-get update && apt-get install -y --no-install-recommends \
     libvips42 \
-    libheif1 libheif-plugin-libde265 \
-    libde265-0 \
-    libx265-199 \
     libwebp7 \
     libjpeg62-turbo \
     libpng16-16 \
@@ -22,6 +20,8 @@ RUN echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/
     libexpat1 \
     libffi8 \
     ca-certificates \
+    && apt-get install -y --no-install-recommends -t bookworm-backports \
+    libheif1 libheif-plugin-libde265 \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 COPY server/package.json ./
