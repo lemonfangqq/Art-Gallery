@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libexpat1 \
     libffi8 \
     ca-certificates \
+    ffmpeg \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 COPY server/package.json ./
