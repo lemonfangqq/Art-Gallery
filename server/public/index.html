@@ -201,22 +201,45 @@ function isHeic(w) {
 async function loadHeicDisp(id) {
   if (heicCache[id]) return heicCache[id];
   try {
-    // Ensure heic2any CDN is loaded (used for upload too, may not be loaded yet)
     if (typeof heic2any === 'undefined') {
       await new Promise(function(resolve) { ensureHeic2any(resolve); });
     }
-    if (typeof heic2any === 'undefined') return null;
-    var r = await fetch('/api/artworks/' + id + '/image');
-    var b = await r.blob();
-    var j = await heic2any({ blob: b, toType: 'image/jpeg' });
-    var jb = Array.isArray(j) ? j[0] : j;
-    var u = URL.createObjectURL(jb);
-    heicCache[id] = u;
-    return u;
+    if (typeof heic2any !== 'undefined') {
+      try {
+        var r = await fetch('/api/artworks/' + id + '/image');
+        var b = await r.blob();
+        var j = await heic2any({ blob: b, toType: 'image/jpeg' });
+        var jb = Array.isArray(j) ? j[0] : j;
+        var u = URL.createObjectURL(jb);
+        heicCache[id] = u;
+        return u;
+      } catch(e) {
+        console.warn('heic2any display conv failed:', id, e);
+      }
+    }
   } catch(e) {
-    console.warn('HEIC display conv failed:', id, e);
-    return null;
+    console.warn('heic2any load failed:', id, e);
   }
+  // Fallback: canvas placeholder for browsers that can't decode HEIC
+  return makeHeicPlaceholder();
+}
+
+function makeHeicPlaceholder() {
+  try {
+    var c = document.createElement('canvas');
+    c.width = 400; c.height = 400;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#f0f0f4'; ctx.fillRect(0, 0, 400, 400);
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 2; ctx.strokeRect(10, 10, 380, 380);
+    ctx.fillStyle = '#aaa'; ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('📷', 200, 150);
+    ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#999';
+    ctx.fillText('HEIC', 200, 240);
+    ctx.font = '13px sans-serif'; ctx.fillStyle = '#bbb';
+    ctx.fillText('点击查看 / 下载', 200, 300);
+    return c.toDataURL();
+  } catch(e) { return null; }
 }
 
 // ═══════════════════════════════════════
