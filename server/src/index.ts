@@ -2,9 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import { writeFile, unlink, readFile } from 'fs/promises';
 import { pool, initDb } from './db';
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
 
@@ -218,48 +215,21 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     const file = req.file;
     const ext = file.originalname.match(/\.(\w+)$/)?.[1]?.toLowerCase() || 'jpg';
     const id = uid();
-    const compressedKey = `compressed_${id}.jpg`;
+    const isHeif = ext === 'heic' || ext === 'heif';
+    const compressedKey = `compressed_${id}.${isHeif ? 'heic' : 'jpg'}`;
     const originalKey = `original_${id}.${ext}`;
     console.log(`[Upload] ext=${ext} size=${file.size} name=${file.originalname}`);
 
-    // HEIC/HEIF: try sharp first (system libheif with HEVC plugin may work),
-    // fall back to ffmpeg (which has its own HEVC decoder).
     let compressed: Buffer;
     let originalBuffer: Buffer;
-    const isHeif = ext === 'heic' || ext === 'heif';
+    let compressedType = 'image/jpeg';
     if (isHeif) {
-      try {
-        console.log(`[Sharp] Trying system libheif for ${ext} file...`);
-        compressed = await sharp(file.buffer, { sequentialRead: true })
-          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85 })
-          .toBuffer();
-        originalBuffer = file.buffer;
-        console.log(`[Sharp] HEIF decoded OK via system, compressed=${compressed.length} bytes`);
-      } catch (sharpErr: any) {
-        console.log(`[Sharp] libheif failed (${sharpErr.message}), trying ffmpeg...`);
-        const tmpInput = `/tmp/heic_${id}.heic`;
-        const tmpOutput = `/tmp/heic_${id}.jpg`;
-        try {
-          await writeFile(tmpInput, file.buffer);
-          const execFileAsync = promisify(execFile);
-          await execFileAsync('ffmpeg', [
-            '-y', '-i', tmpInput,
-            '-q:v', '5',
-            '-frames:v', '1',
-            tmpOutput,
-          ], { timeout: 30000 });
-          compressed = await readFile(tmpOutput);
-          originalBuffer = file.buffer;
-          console.log(`[FFmpeg] HEIF converted OK, output=${compressed.length} bytes`);
-        } catch (ffErr: any) {
-          console.error(`[FFmpeg] conversion failed: ${ffErr.message}`);
-          throw new Error('HEIC/HEIF not supported server-side. Convert to JPEG before uploading, or use the web interface which converts automatically.');
-        } finally {
-          unlink(tmpInput).catch(() => {});
-          unlink(tmpOutput).catch(() => {});
-        }
-      }
+      // Store HEIC as-is to R2. Safari/macOS renders HEIC natively in <img>.
+      // Unsupported browsers get the raw file (can download and convert).
+      console.log(`[HEIF] Storing original HEIC without compression (${file.buffer.length} bytes)`);
+      compressed = file.buffer;
+      compressedType = 'image/heic';
+      originalBuffer = file.buffer;
     } else {
       originalBuffer = file.buffer;
       console.log(`[Sharp] Compressing ${file.buffer.length} bytes buffer`);
@@ -275,8 +245,8 @@ app.post('/api/artworks', upload.single('image'), async (req, res) => {
     try {
       console.log(`[R2] Uploading compressed=${compressed.length} bytes, original=${originalBuffer.length} bytes`);
       [compressedUrl, originalUrl] = await Promise.all([
-        uploadToR2(compressedKey, compressed, 'image/jpeg'),
-        uploadToR2(originalKey, originalBuffer, 'image/jpeg'),
+        uploadToR2(compressedKey, compressed, compressedType),
+        uploadToR2(originalKey, originalBuffer, isHeif ? 'image/heic' : 'image/jpeg'),
       ]);
       console.log(`[R2] Upload OK`);
     } catch (r2Err: any) {

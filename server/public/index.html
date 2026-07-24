@@ -777,11 +777,12 @@ function runHeicConvert(files){
     var file=files[idx++];
     var done=function(err,jpegFile){
       if(err){
-        alert('HEIC 转换失败 ('+err+')。请先用其他工具把这张图转成 JPEG 再上传。');
-        next();
-        return;
+        // Conversion failed — upload original HEIC (server stores it as-is)
+        // Safari/macOS renders HEIC natively.
+        UI.push(file);
+      } else {
+        UI.push(jpegFile);
       }
-      UI.push(jpegFile);
       RUP();
       next();
     };
