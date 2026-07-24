@@ -2,8 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import sharp from 'sharp';
+import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 import { pool, initDb } from './db';
-import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl } from './r2';
+import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl, r2, R2_BUCKET } from './r2';
 
 // ─── Config ───
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -193,14 +195,49 @@ app.get('/api/artworks', async (req, res) => {
 // Serve R2 images via temporary signed URLs (bucket stays private)
 app.get('/api/artworks/:id/image', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT compressed_file, original_file FROM artworks WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query('SELECT compressed_file FROM artworks WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     const key = r2KeyFromUrl(rows[0].compressed_file);
     if (!key) return res.status(404).json({ error: 'Not an R2 object' });
+
+    const ext = key.split('.').pop()?.toLowerCase() || '';
+    const isHeif = ext === 'heic' || ext === 'heif';
+
+    // For HEIF files, try to serve a JPEG display version (lazy converted & cached)
+    if (isHeif) {
+      const displayKey = key.replace(/\.(heic|heif)$/i, '.jpg');
+      let displayExists = false;
+      try {
+        await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET!, Key: displayKey }));
+        displayExists = true;
+      } catch { /* not found – need to convert */ }
+
+      if (!displayExists) {
+        try {
+          console.log(`[HEIC] Lazy converting ${key} → ${displayKey}`);
+          const { Body } = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET!, Key: key }));
+          const chunks: Buffer[] = [];
+          for await (const c of (Body as Readable)) chunks.push(Buffer.from(c));
+          const heicBuffer = Buffer.concat(chunks);
+          const jpegBuffer = await sharp(heicBuffer).jpeg({ quality: 85 }).toBuffer();
+          await uploadToR2(displayKey, jpegBuffer, 'image/jpeg');
+          console.log(`[HEIC] Lazy convert OK`);
+        } catch (convErr: any) {
+          console.warn(`[HEIC] Lazy convert failed: ${convErr.message}`);
+          // Fall through – serve raw HEIC
+        }
+      }
+
+      // Serve the JPEG if it exists now, else raw HEIC
+      const serveKey = displayExists ? displayKey : key;
+      const url = await signR2Url(serveKey);
+      return res.redirect(url);
+    }
+
     const url = await signR2Url(key);
     res.redirect(url);
   } catch (err: any) {
-    console.error('Signed URL error:', err);
+    console.error('Image serving error:', err);
     res.status(500).json({ error: err.message });
   }
 });

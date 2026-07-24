@@ -9,7 +9,9 @@ RUN npm run build
 
 FROM node:20-slim AS runner
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
     libvips42 \
     libwebp7 \
     libjpeg62-turbo \
@@ -18,6 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libexpat1 \
     libffi8 \
     ca-certificates \
+    && apt-get install -y --no-install-recommends -t bookworm-backports \
+    libheif1 libheif-plugin-libde265 \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 COPY server/package.json ./
