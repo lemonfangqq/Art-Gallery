@@ -188,61 +188,6 @@ function origUrl(artwork) {
 }
 
 // ═══════════════════════════════════════
-// HEIC DISPLAY HELPERS
-// ═══════════════════════════════════════
-var HEIC_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-var heicCache = {};
-
-function isHeic(w) {
-  var u = w.compressed_file || w.i || '';
-  return /\.(heic|heif)$/i.test(u);
-}
-
-async function loadHeicDisp(id) {
-  if (heicCache[id]) return heicCache[id];
-  try {
-    if (typeof heic2any === 'undefined') {
-      await new Promise(function(resolve) { ensureHeic2any(resolve); });
-    }
-    if (typeof heic2any !== 'undefined') {
-      try {
-        var r = await fetch('/api/artworks/' + id + '/image');
-        var b = await r.blob();
-        var j = await heic2any({ blob: b, toType: 'image/jpeg' });
-        var jb = Array.isArray(j) ? j[0] : j;
-        var u = URL.createObjectURL(jb);
-        heicCache[id] = u;
-        return u;
-      } catch(e) {
-        console.warn('heic2any display conv failed:', id, e);
-      }
-    }
-  } catch(e) {
-    console.warn('heic2any load failed:', id, e);
-  }
-  // Fallback: canvas placeholder for browsers that can't decode HEIC
-  return makeHeicPlaceholder();
-}
-
-function makeHeicPlaceholder() {
-  try {
-    var c = document.createElement('canvas');
-    c.width = 400; c.height = 400;
-    var ctx = c.getContext('2d');
-    ctx.fillStyle = '#f0f0f4'; ctx.fillRect(0, 0, 400, 400);
-    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 2; ctx.strokeRect(10, 10, 380, 380);
-    ctx.fillStyle = '#aaa'; ctx.font = '64px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('📷', 200, 150);
-    ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#999';
-    ctx.fillText('HEIC', 200, 240);
-    ctx.font = '13px sans-serif'; ctx.fillStyle = '#bbb';
-    ctx.fillText('点击查看 / 下载', 200, 300);
-    return c.toDataURL();
-  } catch(e) { return null; }
-}
-
-// ═══════════════════════════════════════
 // API CLIENT
 // ═══════════════════════════════════════
 async function api(method, path, body) {
@@ -378,10 +323,9 @@ function home(){
     var wc=D.w.filter(function(w){return w.aid===a.id||w.artist_id===a.id}).length;
     var firstW=D.w.filter(function(w){return (w.aid||w.artist_id)===a.id}).sort(function(x,y){return (y.created_at||'').localeCompare(x.created_at||'');})[0];
     var cover=firstW?imgUrl(firstW.compressed_file||firstW.i):null;
-    var heicCover=firstW?isHeic(firstW):false;
     h+='<div class="artist-card" onclick="nav(\'artist\',\''+a.id+'\')">';
     h+='<div class="artist-card-cover" style="background:'+a.c+';color:'+txc(a.c)+'">';
-    h+=cover?'<img src="'+(heicCover?HEIC_PIXEL:cover)+'" alt="'+esc(a.n||a.name)+'" loading="lazy"'+(heicCover?' class="heic-img" data-heic-id="'+firstW.id+'"':'')+'>':'🎨';
+    h+=cover?'<img src="'+cover+'" alt="'+esc(a.n||a.name)+'" loading="lazy">':'🎨';
     h+='</div>';
     h+='<div class="artist-card-info"><div class="artist-name">'+esc(a.n||a.name)+'</div><div class="artist-count">'+ac+' 个画集 · '+wc+' 幅作品</div></div></div>';
   });
@@ -404,9 +348,8 @@ function artist(){
       var ws=D.w.filter(function(w){return (w.bid||w.album_id)===al2.id});
       var fw2=ws[0];
       var cv=fw2?imgUrl(fw2.compressed_file||fw2.i):null;
-      var heicCv=fw2?isHeic(fw2):false;
       var desc=al2.desc||al2.desc||'';
-      h+='<div class="album-card" onclick="nav(\'album\',\''+al2.id+'\')"><div class="album-cover">'+(cv?'<img src="'+(heicCv?HEIC_PIXEL:cv)+'" alt="'+esc(al2.n||al2.name)+'"'+(heicCv?' class="heic-img" data-heic-id="'+fw2.id+'"':'')+'>':'🎨')+'</div><div class="album-info"><h3>'+esc(al2.n||al2.name)+'</h3><p>'+esc(desc)+' · '+ws.length+' 幅作品</p></div></div>';
+      h+='<div class="album-card" onclick="nav(\'album\',\''+al2.id+'\')"><div class="album-cover">'+(cv?'<img src="'+cv+'" alt="'+esc(al2.n||al2.name)+'">':'🎨')+'</div><div class="album-info"><h3>'+esc(al2.n||al2.name)+'</h3><p>'+esc(desc)+' · '+ws.length+' 幅作品</p></div></div>';
     });
     h+='</div>';
   }
@@ -424,8 +367,7 @@ function album(){
   }else{
     h+='<div class="artwork-grid">';
     ws.forEach(function(w){
-      var heicW=isHeic(w);
-      h+='<div class="artwork-card" onclick="nav(\'artwork\',\''+w.id+'\')"><div class="artwork-img"><img src="'+(heicW?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" alt="'+esc(w.t||w.title)+'" loading="lazy"'+(heicW?' class="heic-img" data-heic-id="'+w.id+'"':'')+'></div><div class="artwork-info"><h3>'+esc(w.t||w.title)+'</h3><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<div class="desc">'+esc(w.desc||w.description)+'</div>':'')+'</div></div>';
+      h+='<div class="artwork-card" onclick="nav(\'artwork\',\''+w.id+'\')"><div class="artwork-img"><img src="'+imgUrl(w.compressed_file||w.i)+'" alt="'+esc(w.t||w.title)+'" loading="lazy"></div><div class="artwork-info"><h3>'+esc(w.t||w.title)+'</h3><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<div class="desc">'+esc(w.desc||w.description)+'</div>':'')+'</div></div>';
     });
     h+='</div>';
   }
@@ -442,7 +384,7 @@ function detail(){
   var p=idx>0?ws[idx-1]:null;
   var n=idx<ws.length-1?ws[idx+1]:null;
   var h='<div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">';
-  h+='<div><div style="background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:zoom-in" onclick="OL(\''+w.id+'\')"><img src="'+(isHeic(w)?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" alt="'+esc(w.t||w.title)+'" style="width:100%;height:auto;display:block"'+(isHeic(w)?' class="heic-img" data-heic-id="'+w.id+'"':'')+'></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:center">';
+  h+='<div><div style="background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:zoom-in" onclick="OL(\''+w.id+'\')"><img src="'+imgUrl(w.compressed_file||w.i)+'" alt="'+esc(w.t||w.title)+'" style="width:100%;height:auto;display:block"></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:center">';
   if(p)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+p.id+'\')">◀ 上一幅</button>';
   if(n)h+='<button class="btn btn-outline btn-sm" onclick="nav(\'artwork\',\''+n.id+'\')">下一幅 ▶</button>';
   h+='</div></div>';
@@ -524,7 +466,7 @@ function LB(){
   var h='<div class="lightbox-overlay" id="LBO"><button class="lightbox-close" onclick="LBX()">✕</button>';
   if(S.li>0)h+='<button class="lightbox-nav lightbox-prev" onclick="LBP()">◀</button>';
   if(S.li<ws.length-1)h+='<button class="lightbox-nav lightbox-next" onclick="LBN()">▶</button>';
-  h+='<div class="lightbox"><img src="'+(isHeic(w)?HEIC_PIXEL:imgUrl(w.compressed_file||w.i))+'" class="lightbox-img'+(isHeic(w)?' heic-img':'')+'" alt="'+esc(w.t||w.title)+'"'+(isHeic(w)?' data-heic-id="'+w.id+'"':'')+'><div class="lightbox-info"><h2>'+esc(w.t||w.title)+'</h2><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<p style="font-size:14px;line-height:1.6;margin-top:8px">'+esc(w.desc||w.description)+'</p>':'')+'<div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">'+(S.li+1)+' / '+ws.length+'</div></div></div></div>';
+  h+='<div class="lightbox"><img src="'+imgUrl(w.compressed_file||w.i)+'" class="lightbox-img" alt="'+esc(w.t||w.title)+'"><div class="lightbox-info"><h2>'+esc(w.t||w.title)+'</h2><div class="meta">'+(w.d||w.date||'')+'</div>'+(w.desc||w.description?'<p style="font-size:14px;line-height:1.6;margin-top:8px">'+esc(w.desc||w.description)+'</p>':'')+'<div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">'+(S.li+1)+' / '+ws.length+'</div></div></div></div>';
   document.getElementById('modalContainer').innerHTML=h;
   document.getElementById('LBO').addEventListener('click',function(e){if(e.target===e.currentTarget){S.li=-1;document.getElementById('modalContainer').innerHTML='';}});
   document.addEventListener('keydown',LKK);
@@ -592,11 +534,11 @@ function AM5(){
   UI=[];
   var al=D.b.filter(function(b){return !S.aid||(b.aid||b.artist_id)===S.aid});
   var pa=S.aid||'',pb=S.bid||'';
-  var h='<div class="modal" style="max-width:580px"><div class="modal-header"><h2>上传新作品</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>选择小画家 *</label><select id="fWA" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
+  var h='<div class="modal" style="max-width:640px"><div class="modal-header"><h2>批量上传作品</h2><button class="btn btn-ghost btn-icon" onclick="C()">✕</button></div><div class="modal-body"><div class="form-group"><label>选择小画家 *</label><select id="fWA" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
   D.a.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===pa?' selected':'')+'>'+esc(a.n||a.name)+'</option>';});
   h+='</select></div><div class="form-group"><label>选择画集 *</label><select id="fWB" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
   al.forEach(function(b){h+='<option value="'+b.id+'"'+(b.id===pb?' selected':'')+'>'+esc(b.n||b.name)+'</option>';});
-  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub">支持 JPG、PNG、HEIF 格式</div></div><input type="file" id="fFI" accept="image/*,.heic,.heif" style="display:none"><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
+  h+='</select></div><div class="form-group"><label>描述（所有作品共用）</label><textarea id="fWD" placeholder="说说这些画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub">支持多张图片，名字自动作为标题</div></div><input type="file" id="fFI" accept="image/*" multiple style="display:none"><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">开始上传</button></div></div>';
   return h;
 }
 
@@ -712,28 +654,40 @@ function AME(){
     dB.addEventListener('click',function(){deleteAlbum(dB.dataset.id);});
   }
 
-  // Submit upload
+  // Submit upload — batch sequential
   var sUW=document.getElementById('sUW');
   if(sUW){
     sUW.addEventListener('click',async function(){
       var aid=document.getElementById('fWA').value;
       var bid=document.getElementById('fWB').value;
-      var t=document.getElementById('fWT').value.trim();
-      if(!aid||!bid||!t||UI.length===0){sk(sUW);return;}
-      try {
-        var fd=new FormData();
-        fd.append('albumId',bid);
-        fd.append('artistId',aid);
-        fd.append('title',t);
-        fd.append('description',document.getElementById('fWD').value.trim());
-        for(var i=0;i<UI.length;i++){
-          var file=UI[i];
-          if(file instanceof File)fd.append('image',file);
+      var desc=document.getElementById('fWD').value.trim();
+      if(!aid||!bid||UI.length===0){sk(sUW);return;}
+      sUW.disabled=true;
+      var total=UI.length, idx=0, ok=0, fails=[];
+      sUW.textContent='0/'+total+' 上传中…';
+      for(var i=0;i<total;i++){
+        var item=UI[i];
+        var title=item.title.trim()||item.file.name.replace(/\.[^.]+$/,'');
+        sUW.textContent=(i+1)+'/'+total+' '+esc(title)+'…';
+        try {
+          var fd=new FormData();
+          fd.append('albumId',bid);
+          fd.append('artistId',aid);
+          fd.append('title',title);
+          fd.append('description',desc);
+          fd.append('image',item.file);
+          var artwork=await api('POST','/artworks',fd);
+          D.w.push(artwork);
+          ok++;
+        } catch(e) {
+          fails.push(title+': '+e.message);
         }
-        var artwork=await api('POST','/artworks',fd);
-        D.w.push(artwork);
-        C();R();UI=[];
-      } catch(e) { alert('上传失败: '+e.message); }
+      }
+      sUW.disabled=false;
+      if(fails.length>0){
+        alert('上传完成：'+ok+' 成功，'+fails.length+' 失败\n'+fails.join('\n'));
+      }
+      C();R();UI=[];
     });
   }
 
@@ -755,124 +709,36 @@ function AME(){
 }
 
 // ═══════════════════════════════════════
-// FILE HANDLING — converts HEIC/HEIF to JPEG in-browser before upload
-// so the server never sees a HEIC file (server doesn't support HEIC).
+// FILE HANDLING
 // ═══════════════════════════════════════
 
-function isHeicFile(file){
-  return /\.(heic|heif)$/i.test(file.name);
-}
-
 function HF(files){
-  var pending=[];
   Array.from(files).forEach(function(file){
-    if(!file.type.startsWith('image/')&&!isHeicFile(file))return;
-    if(isHeicFile(file)){
-      pending.push(file);
-      // Show placeholder immediately
-      UI.push('🔄 正在转换 HEIC…');
-    } else {
-      UI.push(file);
-    }
+    if(!file.type.startsWith('image/'))return;
+    var name=file.name.replace(/\.[^.]+$/,'');
+    UI.push({file:file, title:name});
   });
   RUP();
-  if(pending.length>0){
-    convertHeicBatch(pending);
-  }
-}
-
-var _heic2anyLoaded=false;
-function ensureHeic2any(cb){
-  if(typeof heic2any!=='undefined'){_heic2anyLoaded=true;cb();return;}
-  if(_heic2anyLoaded){cb();return;}
-  var s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-  s.onload=function(){_heic2anyLoaded=true;cb();};
-  s.onerror=function(){
-    console.warn('heic2any CDN failed, trying canvas fallback');
-    _heic2anyLoaded=false;
-    cb(); // will try canvas approach in runHeicConvert
-  };
-  document.head.appendChild(s);
-}
-
-function convertHeicBatch(files){
-  ensureHeic2any(function(){ runHeicConvert(files); });
-}
-
-function tryCanvasHeic(file, cb){
-  // Some browsers (Safari, Chrome on iOS/macOS) can natively decode HEIC in <img>
-  var url=URL.createObjectURL(file);
-  var img=new Image();
-  img.onload=function(){
-    var c=document.createElement('canvas');
-    c.width=Math.min(img.width,1200);
-    c.height=Math.min(img.height,1200);
-    var ctx=c.getContext('2d');
-    ctx.drawImage(img,0,0,c.width,c.height);
-    c.toBlob(function(blob){
-      if(blob){
-        var jf=new File([blob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
-        cb(null,jf);
-      } else {
-        cb('canvas.toBlob returned null',null);
-      }
-      URL.revokeObjectURL(url);
-    },'image/jpeg',0.85);
-  };
-  img.onerror=function(){
-    URL.revokeObjectURL(url);
-    cb('browser cannot decode this HEIC',null);
-  };
-  img.src=url;
-}
-
-function runHeicConvert(files){
-  var idx=0;
-  // Remove any pending '🔄 正在转换 HEIC…' placeholders from UI
-  UI=UI.filter(function(x){return typeof x!=='string'||!x.includes('HEIC');});
-  function next(){
-    if(idx>=files.length){RUP();return;}
-    var file=files[idx++];
-    var done=function(err,jpegFile){
-      if(err){
-        // Conversion failed — upload original HEIC (server stores it as-is)
-        // Safari/macOS renders HEIC natively.
-        UI.push(file);
-      } else {
-        UI.push(jpegFile);
-      }
-      RUP();
-      next();
-    };
-    if(typeof heic2any!=='undefined'){
-      heic2any({blob:file,toType:'image/jpeg',quality:0.85})
-        .then(function(resultBlob){
-          var jf=new File([resultBlob],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
-          done(null,jf);
-        })
-        .catch(function(err){
-          console.warn('heic2any failed:',err);
-          tryCanvasHeic(file,done);
-        });
-    } else {
-      tryCanvasHeic(file,done);
-    }
-  }
-  next();
 }
 
 function RUP(){
   var up=document.getElementById('fUP');
   if(!up)return;
-  up.innerHTML=UI.map(function(img,i){
-    if(typeof img==='string'){
-      if(img.includes('HEIC'))return '<div class="type-body-01" style="padding:8px;color:var(--text-secondary)">⏳ 正在转换 HEIC…</div>';
-      return '<div style="position:relative;display:inline-block"><img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"></div>';
-    }
-    var url=URL.createObjectURL(img);
-    return '<div style="position:relative;display:inline-block"><img src="'+url+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)"><button onclick="UI.splice('+i+',1);RUP();" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer">✕</button></div>';
+  up.innerHTML=UI.map(function(item,i){
+    var url=URL.createObjectURL(item.file);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface)">'+
+      '<img src="'+url+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0">'+
+      '<input type="text" class="fTitle" data-idx="'+i+'" value="'+esc(item.title)+'" style="flex:1;min-width:0;padding:6px 10px;font-size:13px" maxlength="40">'+
+      '<button onclick="UI.splice('+i+',1);RUP();" style="width:26px;height:26px;border-radius:50%;background:var(--coral);color:#fff;font-size:12px;border:none;cursor:pointer;flex-shrink:0;line-height:26px;text-align:center">✕</button>'+
+      '</div>';
   }).join('');
+  // Sync title edits back to UI
+  document.querySelectorAll('.fTitle').forEach(function(inp){
+    inp.addEventListener('input',function(){
+      var idx=parseInt(this.dataset.idx);
+      if(UI[idx])UI[idx].title=this.value;
+    });
+  });
 }
 
 // ═══════════════════════════════════════
@@ -884,21 +750,6 @@ function AI(){
       if(i.dataset.ai)return;i.dataset.ai='1';
       if(i.complete)i.classList.add('loaded');
       else i.addEventListener('load',function(){this.classList.add('loaded');});
-    });
-    // Convert HEIC images in-browser for cross-browser display
-    document.querySelectorAll('.heic-img').forEach(function(i){
-      var id=i.dataset.heicId;
-      if(!id||i.dataset.heicDone)return;
-      i.dataset.heicDone='1';
-      loadHeicDisp(id).then(function(u){
-        if(u){
-          i.src=u;
-          i.classList.add('loaded');
-        } else {
-          // Fallback: try serving the HEIC directly (works on Safari)
-          i.src='/api/artworks/'+id+'/image';
-        }
-      });
     });
   },100);
 }

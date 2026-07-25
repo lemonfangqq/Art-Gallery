@@ -489,7 +489,7 @@ function AM5(){
   D.a.forEach(function(a){h+='<option value="'+a.id+'"'+(a.id===pa?' selected':'')+'>'+esc(a.n)+'</option>';});
   h+='</select></div><div class="form-group"><label>选择画集 *</label><select id="fWB" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font:inherit;color:var(--text)"><option value="">-- 请选择 --</option>';
   al.forEach(function(b){h+='<option value="'+b.id+'"'+(b.id===pb?' selected':'')+'>'+esc(b.n)+'</option>';});
-  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub" id="uploadHint">支持 JPG、PNG、HEIC(自动转JPG) 格式</div></div><input type="file" id="fFI" accept="image/*,.heic,.heif,.HEIC,.HEIF" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
+  h+='</select></div><div class="form-group"><label>作品标题 *</label><input type="text" id="fWT" placeholder="给这幅画起个名字" maxlength="40"></div><div class="form-group"><label>描述</label><textarea id="fWD" placeholder="说说这幅画的故事..." maxlength="300"></textarea></div><div class="form-group"><label>上传画作照片 *</label><div class="upload-area" id="fUA"><div class="icon">📸</div><p>点击或拖拽照片到这里</p><div class="sub" id="uploadHint">支持 JPG、PNG 格式</div></div><input type="file" id="fFI" accept="image/*" style="display:none" multiple><div class="upload-preview" id="fUP"></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="C()">取消</button><button class="btn btn-primary" id="sUW">确认上传</button></div></div>';
   return h;
 }
 
@@ -522,7 +522,7 @@ function AME(){
   var uh=document.getElementById('uploadHint');
   if(uh){
     var cfg2=GC();
-    if(cfg2&&cfg2.t){uh.textContent='配置 GitHub 中 • 支持 JPG、PNG、HEIC(自动转JPG)';}
+    if(cfg2&&cfg2.t){uh.textContent='已配置 GitHub';}
     else{uh.innerHTML='未配置 GitHub • 图片存在本地 <button class="btn btn-ghost btn-sm" onclick="C();M(&#39;settings&#39;)" style="text-decoration:underline">去设置</button>';}
   }
   if(ua&&fi){
@@ -658,7 +658,7 @@ function AME(){
 function HF(files){
   var cfg=GC();
   Array.from(files).forEach(function(file){
-    if(!file.type.startsWith('image/') && !file.name.match(/\.(heic|heif)$/i))return;
+    if(!file.type.startsWith('image/'))return;
     var _ui=UI.length;
     UI.push({_conv:true});RUP();
     cps(file,function(optFile){
@@ -688,29 +688,9 @@ function cps(file,cb){
   };
   img.onerror=function(){
     URL.revokeObjectURL(url);
-    if(file.name.match(/\.(heic|heif)$/i)){h2cdn(file,cb);}
-    else{cb(file);}
+    cb(file);
   };
   img.src=url;
-}
-
-function h2cdn(file,cb){
-  if(window.heic2any){h2do(file,cb);return;}
-  var cdns=['https://cdn.jsdelivr.net/npm/heic2any@0.0.5/dist/heic2any.min.js','https://unpkg.com/heic2any@0.0.5/dist/heic2any.min.js'];
-  var ci=0;
-  (function tl(){
-    if(ci>=cdns.length){alert('HEIC转换库加载失败');cb(null);return;}
-    var s=document.createElement('script');s.src=cdns[ci];
-    s.onload=function(){h2do(file,cb);};s.onerror=function(){ci++;tl();};
-    document.head.appendChild(s);
-  })();
-}
-
-function h2do(file,cb){
-  heic2any({blob:file,toType:'image/jpeg',quality:0.85}).then(function(r){
-    var b=r instanceof Blob?r:r[0];
-    cps(new File([b],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}),cb);
-  }).catch(function(e){alert('HEIC转换失败:'+e.message);cb(null);});
 }
 
 function procF(file,orig,cfg){
