@@ -5,6 +5,7 @@ import sharp from 'sharp';
 
 import { pool, initDb } from './db';
 import { uploadToR2, deleteFromR2, signR2Url, r2KeyFromUrl, r2, R2_BUCKET } from './r2';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // ─── Config ───
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -281,6 +282,41 @@ app.delete('/api/artworks/:id', async (req, res) => {
   if (existing.original_file) await deleteFromR2(existing.original_file);
   await pool.query('DELETE FROM artworks WHERE id = $1', [req.params.id]);
   res.json({ success: true });
+});
+
+app.post('/api/artworks/:id/rotate', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT compressed_file FROM artworks WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    const storedUrl: string = rows[0].compressed_file;
+    const key = r2KeyFromUrl(storedUrl);
+    if (!key) return res.status(400).json({ error: 'Cannot determine R2 key' });
+
+    const getCmd = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+    const { Body } = await r2.send(getCmd);
+    if (!Body) return res.status(500).json({ error: 'Empty body from R2' });
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of Body as AsyncIterable<Uint8Array>) chunks.push(Buffer.from(chunk));
+    const originalBuffer = Buffer.concat(chunks);
+
+    const rotated = await sharp(originalBuffer, { sequentialRead: true })
+      .rotate(90, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: rotated,
+      ContentType: 'image/jpeg',
+    }));
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Rotate error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ════════════════════════════════════════
