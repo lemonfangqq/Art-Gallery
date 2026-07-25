@@ -286,6 +286,9 @@ app.delete('/api/artworks/:id', async (req, res) => {
 
 app.post('/api/artworks/:id/rotate', async (req, res) => {
   try {
+    const { direction } = req.body;
+    const angle = direction === 'ccw' ? -90 : 90;
+
     const { rows } = await pool.query('SELECT compressed_file FROM artworks WHERE id = $1', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     const storedUrl: string = rows[0].compressed_file;
@@ -301,7 +304,7 @@ app.post('/api/artworks/:id/rotate', async (req, res) => {
     const originalBuffer = Buffer.concat(chunks);
 
     const rotated = await sharp(originalBuffer, { sequentialRead: true })
-      .rotate(90, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .rotate(angle, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
       .jpeg({ quality: 85 })
       .toBuffer();
 
