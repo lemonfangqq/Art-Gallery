@@ -4,3 +4,6 @@ data/
 .DS_Store
 *.log
 .env
+
+# Separate repository: https://github.com/lemonfangqq/family-finance
+family-finance/
